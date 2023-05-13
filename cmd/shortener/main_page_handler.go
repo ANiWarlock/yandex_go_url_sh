@@ -17,7 +17,7 @@ func mainPageHandler(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if string(responseData) == "" {
-			http.Error(rw, fmt.Sprintf("Empty body!"), http.StatusBadRequest)
+			http.Error(rw, "Empty body!", http.StatusBadRequest)
 			return
 		}
 

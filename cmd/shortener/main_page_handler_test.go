@@ -78,7 +78,7 @@ func Test_mainPageHandler(t *testing.T) {
 			assert.Equal(t, test.want.contentType, rr.Header().Get("Content-Type"))
 
 			if test.method == http.MethodPost {
-				for key, _ := range linkStore {
+				for key := range linkStore {
 					assert.Equal(t, baseURL+"/"+key, string(resBody))
 				}
 			} else if test.method == http.MethodGet {
