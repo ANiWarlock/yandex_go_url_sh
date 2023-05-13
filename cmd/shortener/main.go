@@ -1,18 +1,28 @@
 package main
 
 import (
-	"crypto/md5"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
 )
 
-const baseUrl = "http://localhost:8080"
+const baseURL = "http://localhost:8080"
 
-var (
-	linkStore map[string]string
-)
+var linkStore map[string]string
 
+func main() {
+	linkStore = make(map[string]string)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc(`/`, mainPage)
+
+	err := http.ListenAndServe(`:8080`, mux)
+	if err != nil {
+		panic(err)
+	}
+}
 func mainPage(rw http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		defer r.Body.Close()
@@ -22,27 +32,27 @@ func mainPage(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		longUrl := string(responseData)
-		hashedUrl := shorten(longUrl)
-		shortUrl := baseUrl + "/" + hashedUrl
-		linkStore[hashedUrl] = longUrl
+		longURL := string(responseData)
+		hashedURL := shorten(longURL)
+		linkStore[hashedURL] = longURL
+		shortURL := baseURL + "/" + hashedURL
 
-		rw.Header().Set("content-type", "text/plain")
 		rw.WriteHeader(http.StatusCreated)
-		_, err = rw.Write([]byte(shortUrl))
+		_, err = rw.Write([]byte(shortURL))
 		if err != nil {
 			return
 		}
 	} else if r.Method == http.MethodGet {
-		shortUrl := r.URL.Path
+		shortURL := r.URL.Path[1:]
 
-		if shortUrl == "" {
+		if shortURL == "" {
 			rw.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		rw.Header().Set("Location", linkStore[shortUrl])
+		rw.Header().Set("Location", linkStore[shortURL])
 		rw.WriteHeader(http.StatusTemporaryRedirect)
+		return
 	} else {
 		rw.WriteHeader(http.StatusBadRequest)
 		return
@@ -50,17 +60,7 @@ func mainPage(rw http.ResponseWriter, r *http.Request) {
 
 }
 
-func shorten(longUrl string) string {
-	hashedString := md5.Sum([]byte(longUrl))
-	return string(hashedString[:5])
-}
-
-func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc(`/`, mainPage)
-
-	err := http.ListenAndServe(`:8080`, mux)
-	if err != nil {
-		panic(err)
-	}
+func shorten(longURL string) string {
+	hashedString := sha1.Sum([]byte(longURL))
+	return hex.EncodeToString(hashedString[:4])
 }
