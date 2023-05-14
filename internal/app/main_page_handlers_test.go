@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -66,7 +67,7 @@ func Test_mainPageHandler(t *testing.T) {
 			assert.Equal(t, test.want.contentType, rr.Header().Get("Content-Type"))
 
 			for key := range LinkStore {
-				assert.Equal(t, baseURL+"/"+key, string(resBody))
+				assert.Equal(t, config.GetReturnHost()+"/"+key, string(resBody))
 			}
 		})
 	}

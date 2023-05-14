@@ -93,7 +93,7 @@ func Test_Router(t *testing.T) {
 
 			resp, resBody := testRequest(t, ts, test.method, test.url, test.body)
 			defer resp.Body.Close()
-			
+
 			assert.Equal(t, test.want.code, resp.StatusCode)
 			assert.Equal(t, test.want.contentType, resp.Header.Get("Content-Type"))
 

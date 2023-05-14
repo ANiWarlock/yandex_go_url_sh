@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/internal/app"
 	"github.com/go-chi/chi/v5"
 	"log"
@@ -17,5 +18,6 @@ func shortenerRouter() chi.Router {
 }
 
 func main() {
-	log.Fatal(http.ListenAndServe(":8080", shortenerRouter()))
+	config.ParseFlags()
+	log.Fatal(http.ListenAndServe(config.GetHost(), shortenerRouter()))
 }

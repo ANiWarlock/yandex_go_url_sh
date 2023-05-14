@@ -4,12 +4,11 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 )
-
-const baseURL = "http://localhost:8080"
 
 var LinkStore map[string]string
 
@@ -30,7 +29,7 @@ func MainPageHandler(rw http.ResponseWriter, r *http.Request) {
 	longURL := string(responseData)
 	hashedURL := shorten(longURL)
 	LinkStore[hashedURL] = longURL
-	shortURL := baseURL + "/" + hashedURL
+	shortURL := config.GetReturnHost() + "/" + hashedURL
 
 	rw.WriteHeader(http.StatusCreated)
 	rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -43,10 +42,6 @@ func MainPageHandler(rw http.ResponseWriter, r *http.Request) {
 
 func LongURLRedirectHandler(rw http.ResponseWriter, r *http.Request) {
 	shortURL := chi.URLParam(r, "shortURL")
-
-	fmt.Println(shortURL)
-	fmt.Println(LinkStore[shortURL])
-	fmt.Println("I WAS HERE")
 
 	if shortURL == "" {
 		rw.WriteHeader(http.StatusBadRequest)
