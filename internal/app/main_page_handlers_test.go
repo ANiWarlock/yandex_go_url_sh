@@ -67,7 +67,7 @@ func Test_mainPageHandler(t *testing.T) {
 			assert.Equal(t, test.want.contentType, rr.Header().Get("Content-Type"))
 
 			for key := range LinkStore {
-				assert.Equal(t, config.GetReturnHost()+"/"+key, string(resBody))
+				assert.Equal(t, config.GetBaseURL()+"/"+key, string(resBody))
 			}
 		})
 	}

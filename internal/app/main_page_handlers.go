@@ -29,7 +29,7 @@ func MainPageHandler(rw http.ResponseWriter, r *http.Request) {
 	longURL := string(responseData)
 	hashedURL := shorten(longURL)
 	LinkStore[hashedURL] = longURL
-	shortURL := config.GetReturnHost() + "/" + hashedURL
+	shortURL := config.GetBaseURL() + "/" + hashedURL
 
 	rw.WriteHeader(http.StatusCreated)
 	rw.Header().Set("Content-Type", "text/plain; charset=utf-8")

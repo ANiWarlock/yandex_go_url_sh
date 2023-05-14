@@ -18,6 +18,6 @@ func shortenerRouter() chi.Router {
 }
 
 func main() {
-	config.ParseFlags()
+	config.InitOptions()
 	log.Fatal(http.ListenAndServe(config.GetHost(), shortenerRouter()))
 }
