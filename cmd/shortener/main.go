@@ -11,7 +11,7 @@ func shortenerRouter() chi.Router {
 	r := chi.NewRouter()
 
 	r.Post("/", app.MainPageHandler)
-	r.Get("/{shortURL}", app.LongUrlRedirectHandler)
+	r.Get("/{shortURL}", app.LongURLRedirectHandler)
 
 	return r
 }

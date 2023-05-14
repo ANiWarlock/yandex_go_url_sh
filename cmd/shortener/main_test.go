@@ -24,7 +24,6 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 
 	resp, err := client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -37,7 +36,7 @@ func Test_Router(t *testing.T) {
 	defer ts.Close()
 
 	url := "http://ya.ru"
-	shortUrlHash := "shortened"
+	shortURLHash := "shortened"
 	type want struct {
 		code        int
 		contentType string
@@ -75,7 +74,7 @@ func Test_Router(t *testing.T) {
 		{
 			name:   "GET test #1",
 			method: http.MethodGet,
-			url:    "/" + shortUrlHash,
+			url:    "/" + shortURLHash,
 			body:   "",
 			want: want{
 				code:        307,
@@ -89,10 +88,12 @@ func Test_Router(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			app.LinkStore = make(map[string]string)
 			if test.method == http.MethodGet {
-				app.LinkStore[shortUrlHash] = url
+				app.LinkStore[shortURLHash] = url
 			}
 
 			resp, resBody := testRequest(t, ts, test.method, test.url, test.body)
+			defer resp.Body.Close()
+			
 			assert.Equal(t, test.want.code, resp.StatusCode)
 			assert.Equal(t, test.want.contentType, resp.Header.Get("Content-Type"))
 

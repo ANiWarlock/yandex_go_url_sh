@@ -41,7 +41,7 @@ func MainPageHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func LongUrlRedirectHandler(rw http.ResponseWriter, r *http.Request) {
+func LongURLRedirectHandler(rw http.ResponseWriter, r *http.Request) {
 	shortURL := chi.URLParam(r, "shortURL")
 
 	fmt.Println(shortURL)
@@ -55,7 +55,6 @@ func LongUrlRedirectHandler(rw http.ResponseWriter, r *http.Request) {
 
 	rw.Header().Set("Location", LinkStore[shortURL])
 	rw.WriteHeader(http.StatusTemporaryRedirect)
-	return
 }
 
 func shorten(longURL string) string {
