@@ -1,21 +1,21 @@
 package main
 
 import (
+	"github.com/ANiWarlock/yandex_go_url_sh.git/internal/app"
+	"github.com/go-chi/chi/v5"
+	"log"
 	"net/http"
 )
 
-const baseURL = "http://localhost:8080"
+func shortenerRouter() chi.Router {
+	r := chi.NewRouter()
 
-var linkStore map[string]string
+	r.Post("/", app.MainPageHandler)
+	r.Get("/{shortURL}", app.LongUrlRedirectHandler)
+
+	return r
+}
 
 func main() {
-	linkStore = make(map[string]string)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc(`/`, mainPageHandler)
-
-	err := http.ListenAndServe(`:8080`, mux)
-	if err != nil {
-		panic(err)
-	}
+	log.Fatal(http.ListenAndServe(":8080", shortenerRouter()))
 }

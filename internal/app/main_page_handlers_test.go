@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -10,6 +10,7 @@ import (
 	"testing"
 )
 
+// тесты iter2, теперь проверяет только пост, остальное в main_test.go
 func Test_mainPageHandler(t *testing.T) {
 	url := "http://ya.ru"
 	type want struct {
@@ -46,28 +47,15 @@ func Test_mainPageHandler(t *testing.T) {
 				location:    "",
 			},
 		},
-		{
-			name:   "GET test #1",
-			method: http.MethodGet,
-			url:    "/shortened",
-			body:   "",
-			want: want{
-				code:        307,
-				contentType: "",
-				location:    url,
-			},
-		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			linkStore = make(map[string]string)
-			if test.method == http.MethodGet {
-				linkStore["shortened"] = url
-			}
+			LinkStore = make(map[string]string)
+
 			request := httptest.NewRequest(test.method, test.url, strings.NewReader(test.body))
 			rr := httptest.NewRecorder()
-			mainPageHandler(rr, request)
+			MainPageHandler(rr, request)
 			res := rr.Result()
 			assert.Equal(t, test.want.code, res.StatusCode)
 
@@ -77,12 +65,8 @@ func Test_mainPageHandler(t *testing.T) {
 
 			assert.Equal(t, test.want.contentType, rr.Header().Get("Content-Type"))
 
-			if test.method == http.MethodPost {
-				for key := range linkStore {
-					assert.Equal(t, baseURL+"/"+key, string(resBody))
-				}
-			} else if test.method == http.MethodGet {
-				assert.Equal(t, test.want.location, rr.Header().Get("Location"))
+			for key := range LinkStore {
+				assert.Equal(t, baseURL+"/"+key, string(resBody))
 			}
 		})
 	}
