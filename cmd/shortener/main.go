@@ -3,21 +3,20 @@ package main
 import (
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/internal/app"
-	"github.com/go-chi/chi/v5"
+	"github.com/ANiWarlock/yandex_go_url_sh.git/router"
+	"github.com/ANiWarlock/yandex_go_url_sh.git/storage"
 	"log"
 	"net/http"
 )
 
-func shortenerRouter() chi.Router {
-	r := chi.NewRouter()
-
-	r.Post("/", app.MainPageHandler)
-	r.Get("/{shortURL}", app.LongURLRedirectHandler)
-
-	return r
-}
-
 func main() {
-	config.InitOptions()
-	log.Fatal(http.ListenAndServe(config.GetHost(), shortenerRouter()))
+	cfg, err := config.InitConfig()
+	if err != nil {
+		log.Fatalf("Cannot init config: %s", err)
+	}
+	store := storage.NewStorage()
+	myApp := app.NewApp(cfg, store)
+	shortRouter := router.NewShortenerRouter(myApp)
+
+	log.Fatal(http.ListenAndServe(cfg.Host, shortRouter))
 }

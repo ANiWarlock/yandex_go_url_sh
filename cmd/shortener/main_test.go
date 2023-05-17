@@ -1,7 +1,10 @@
 package main
 
 import (
+	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/internal/app"
+	"github.com/ANiWarlock/yandex_go_url_sh.git/router"
+	"github.com/ANiWarlock/yandex_go_url_sh.git/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -32,7 +35,10 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 }
 
 func Test_Router(t *testing.T) {
-	ts := httptest.NewServer(shortenerRouter())
+	cfg, _ := config.InitConfig()
+	store := storage.NewStorage()
+	myApp := app.NewApp(cfg, store)
+	ts := httptest.NewServer(router.NewShortenerRouter(myApp))
 	defer ts.Close()
 
 	url := "http://ya.ru"
@@ -85,10 +91,10 @@ func Test_Router(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
-			app.LinkStore = make(map[string]string)
 			if test.method == http.MethodGet {
-				app.LinkStore[shortURLHash] = url
+				store.SaveLongURL(shortURLHash, url)
 			}
 
 			resp, resBody := testRequest(t, ts, test.method, test.url, test.body)
@@ -97,10 +103,10 @@ func Test_Router(t *testing.T) {
 			assert.Equal(t, test.want.code, resp.StatusCode)
 			assert.Equal(t, test.want.contentType, resp.Header.Get("Content-Type"))
 
-			if test.method == http.MethodPost {
-				for key := range app.LinkStore {
-					assert.Equal(t, key, resBody[len(resBody)-8:])
-				}
+			if test.method == http.MethodPost && test.body != "" {
+				resHashedURL := resBody[len(resBody)-8:]
+				_, ok := store.GetLongURL(resHashedURL)
+				assert.True(t, ok)
 			} else if test.method == http.MethodGet {
 				assert.Equal(t, test.want.location, resp.Header.Get("Location"))
 			}

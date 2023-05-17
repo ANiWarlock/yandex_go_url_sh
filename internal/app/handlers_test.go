@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
+	"github.com/ANiWarlock/yandex_go_url_sh.git/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -12,7 +13,12 @@ import (
 )
 
 // тесты iter2, теперь проверяет только пост, остальное в main_test.go
-func Test_mainPageHandler(t *testing.T) {
+func Test_GetShortURLHandler(t *testing.T) {
+
+	cfg, _ := config.InitConfig()
+	store := storage.NewStorage()
+	myApp := NewApp(cfg, store)
+
 	url := "http://ya.ru"
 	type want struct {
 		code        int
@@ -51,12 +57,11 @@ func Test_mainPageHandler(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
-			LinkStore = make(map[string]string)
-
 			request := httptest.NewRequest(test.method, test.url, strings.NewReader(test.body))
 			rr := httptest.NewRecorder()
-			MainPageHandler(rr, request)
+			myApp.GetShortURLHandler(rr, request)
 			res := rr.Result()
 			assert.Equal(t, test.want.code, res.StatusCode)
 
@@ -66,8 +71,10 @@ func Test_mainPageHandler(t *testing.T) {
 
 			assert.Equal(t, test.want.contentType, rr.Header().Get("Content-Type"))
 
-			for key := range LinkStore {
-				assert.Equal(t, config.GetBaseURL()+"/"+key, string(resBody))
+			if test.body != "" {
+				resHashedURL := string(resBody[len(resBody)-8:])
+				_, ok := store.GetLongURL(resHashedURL)
+				assert.True(t, ok)
 			}
 		})
 	}

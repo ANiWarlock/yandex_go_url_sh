@@ -4,22 +4,16 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 )
 
-var LinkStore map[string]string
-
-func MainPageHandler(rw http.ResponseWriter, r *http.Request) {
-	LinkStore = make(map[string]string)
-
-	defer r.Body.Close()
+func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 	responseData, err := io.ReadAll(r.Body)
 	if err != nil {
-		fmt.Println(err)
 		http.Error(rw, fmt.Sprintf("Error in request body: %s", err), http.StatusBadRequest)
+		return
 	}
 	if string(responseData) == "" {
 		http.Error(rw, "Empty body!", http.StatusBadRequest)
@@ -28,19 +22,18 @@ func MainPageHandler(rw http.ResponseWriter, r *http.Request) {
 
 	longURL := string(responseData)
 	hashedURL := shorten(longURL)
-	LinkStore[hashedURL] = longURL
-	shortURL := config.GetBaseURL() + "/" + hashedURL
+	a.storage.SaveLongURL(hashedURL, longURL)
+	shortURL := a.cfg.BaseURL + "/" + hashedURL
 
 	rw.WriteHeader(http.StatusCreated)
 	rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	_, err = rw.Write([]byte(shortURL))
 	if err != nil {
-		fmt.Println(err)
 		return
 	}
 }
 
-func LongURLRedirectHandler(rw http.ResponseWriter, r *http.Request) {
+func (a *App) LongURLRedirectHandler(rw http.ResponseWriter, r *http.Request) {
 	shortURL := chi.URLParam(r, "shortURL")
 
 	if shortURL == "" {
@@ -48,7 +41,13 @@ func LongURLRedirectHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rw.Header().Set("Location", LinkStore[shortURL])
+	longURL, ok := a.storage.GetLongURL(shortURL)
+	if !ok {
+		http.Error(rw, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	rw.Header().Set("Location", longURL)
 	rw.WriteHeader(http.StatusTemporaryRedirect)
 }
 

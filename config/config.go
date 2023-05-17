@@ -2,36 +2,33 @@ package config
 
 import (
 	"flag"
-	"fmt"
 	"github.com/caarlos0/env/v8"
 )
 
-var urls struct {
+type AppConfig struct {
 	Host    string `env:"SERVER_ADDRESS"`
 	BaseURL string `env:"BASE_URL"`
 }
 
-func parseFlags() {
-	flag.StringVar(&urls.Host, "a", "localhost:8080", "Укажите адрес в формате host:port")
-	flag.StringVar(&urls.BaseURL, "b", "http://localhost:8080", "Укажите возвращаемый адрес в формате http://host:port")
+func InitConfig() (*AppConfig, error) {
+	cfg := AppConfig{}
+	cfg.parseFlags()
+	err := cfg.parseEnvs()
+	if err != nil {
+		return &cfg, err
+	}
+	return &cfg, nil
+}
+
+func (c *AppConfig) parseFlags() {
+	flag.StringVar(&c.Host, "a", "localhost:8080", "Укажите адрес в формате host:port")
+	flag.StringVar(&c.BaseURL, "b", "http://localhost:8080", "Укажите возвращаемый адрес в формате http://host:port")
 	flag.Parse()
 }
 
-func parseEnvs() {
-	if err := env.Parse(&urls); err != nil {
-		fmt.Printf("%+v\n", err)
+func (c *AppConfig) parseEnvs() error {
+	if err := env.Parse(&c); err != nil {
+		return err
 	}
-}
-
-func InitOptions() {
-	parseFlags()
-	parseEnvs()
-}
-
-func GetHost() string {
-	return urls.Host
-}
-
-func GetBaseURL() string {
-	return urls.BaseURL
+	return nil
 }
