@@ -27,7 +27,7 @@ func (c *AppConfig) parseFlags() {
 }
 
 func (c *AppConfig) parseEnvs() error {
-	if err := env.Parse(&c); err != nil {
+	if err := env.Parse(c); err != nil {
 		return err
 	}
 	return nil
