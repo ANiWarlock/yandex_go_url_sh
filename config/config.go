@@ -6,8 +6,9 @@ import (
 )
 
 type AppConfig struct {
-	Host    string `env:"SERVER_ADDRESS"`
-	BaseURL string `env:"BASE_URL"`
+	Host     string `env:"SERVER_ADDRESS"`
+	BaseURL  string `env:"BASE_URL"`
+	Filename string `env:"FILE_STORAGE_PATH"`
 }
 
 func InitConfig() (*AppConfig, error) {
@@ -23,6 +24,7 @@ func InitConfig() (*AppConfig, error) {
 func (c *AppConfig) parseFlags() {
 	flag.StringVar(&c.Host, "a", "localhost:8080", "Укажите адрес в формате host:port")
 	flag.StringVar(&c.BaseURL, "b", "http://localhost:8080", "Укажите возвращаемый адрес в формате http://host:port")
+	flag.StringVar(&c.Filename, "f", "/tmp/short-url-db.json", "Полное имя файла, куда сохраняются данные в формате JSON")
 	flag.Parse()
 }
 

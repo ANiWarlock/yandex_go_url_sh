@@ -16,7 +16,7 @@ import (
 func Test_GetShortURLHandler(t *testing.T) {
 
 	cfg, _ := config.InitConfig()
-	store := storage.NewStorage()
+	store, _ := storage.InitStorage(*cfg)
 	myApp := NewApp(cfg, store)
 
 	url := "http://ya.ru"

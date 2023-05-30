@@ -20,7 +20,10 @@ func main() {
 	if err != nil {
 		logger.Sugar.Fatalf("Cannot init config: %s", err)
 	}
-	store := storage.NewStorage()
+	store, err := storage.InitStorage(*cfg)
+	if err != nil {
+		logger.Sugar.Fatalf("Cannot init storage: %s", err)
+	}
 	myApp := app.NewApp(cfg, store)
 	shortRouter := router.NewShortenerRouter(myApp)
 

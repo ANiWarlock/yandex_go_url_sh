@@ -40,7 +40,7 @@ func Test_Router(t *testing.T) {
 	err := logger.Initialize("info")
 	require.NoError(t, err)
 	cfg, _ := config.InitConfig()
-	store := storage.NewStorage()
+	store, _ := storage.InitStorage(*cfg)
 	myApp := app.NewApp(cfg, store)
 	ts := httptest.NewServer(router.NewShortenerRouter(myApp))
 	defer ts.Close()

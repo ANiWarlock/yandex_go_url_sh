@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"compress/gzip"
-	"github.com/ANiWarlock/yandex_go_url_sh.git/logger"
 	"io"
 	"net/http"
 	"strings"
@@ -14,9 +13,6 @@ func Gzip(next http.Handler) http.Handler {
 
 		contentType := r.Header.Get("Content-Type")
 		gzipAllowed := strings.Contains(contentType, "application/json") || strings.Contains(contentType, "text/html")
-
-		logger.Sugar.Infoln("Content-Type")
-		logger.Sugar.Infoln(contentType)
 
 		acceptEncoding := r.Header.Get("Accept-Encoding")
 		supportsGzip := strings.Contains(acceptEncoding, "gzip")
