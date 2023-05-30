@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/internal/app"
+	"github.com/ANiWarlock/yandex_go_url_sh.git/logger"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/router"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/storage"
 	"github.com/stretchr/testify/assert"
@@ -35,6 +36,8 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 }
 
 func Test_Router(t *testing.T) {
+	err := logger.Initialize("info")
+	require.NoError(t, err)
 	cfg, _ := config.InitConfig()
 	store := storage.NewStorage()
 	myApp := app.NewApp(cfg, store)
