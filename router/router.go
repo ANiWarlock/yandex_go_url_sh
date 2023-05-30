@@ -11,6 +11,7 @@ func NewShortenerRouter(myApp *app.App) chi.Router {
 	r.Use(logger.MiddlewareLogger)
 
 	r.Post("/", myApp.GetShortURLHandler)
+	r.Post("/api/shorten", myApp.APIGetShortURLHandler)
 	r.Get("/{shortURL}", myApp.LongURLRedirectHandler)
 
 	return r
