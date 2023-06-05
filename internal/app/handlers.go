@@ -5,7 +5,6 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
@@ -14,7 +13,8 @@ import (
 func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 	responseData, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(rw, fmt.Sprintf("Error in request body: %v", err), http.StatusBadRequest)
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot process body: %v", err)
 		return
 	}
 	if string(responseData) == "" {
@@ -68,12 +68,14 @@ func (a *App) APIGetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
-		http.Error(rw, fmt.Sprintf("Error in request body: %v", err), http.StatusBadRequest)
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot process body: %v", err)
 		return
 	}
 
 	if err = json.Unmarshal(buf.Bytes(), &apiReq); err != nil {
-		http.Error(rw, err.Error(), http.StatusBadRequest)
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot process body: %v", err)
 		return
 	}
 
@@ -90,7 +92,7 @@ func (a *App) APIGetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 
 	resp, err := json.Marshal(apiResp)
 	if err != nil {
-		http.Error(rw, err.Error(), http.StatusBadRequest)
+		rw.WriteHeader(http.StatusBadRequest)
 		a.sugar.Errorf("Cannot process body: %v", err)
 		return
 	}
