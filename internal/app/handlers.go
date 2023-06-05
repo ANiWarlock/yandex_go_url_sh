@@ -14,7 +14,7 @@ import (
 func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 	responseData, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(rw, fmt.Sprintf("Error in request body: %s", err), http.StatusBadRequest)
+		http.Error(rw, fmt.Sprintf("Error in request body: %v", err), http.StatusBadRequest)
 		return
 	}
 	if string(responseData) == "" {
@@ -68,7 +68,7 @@ func (a *App) APIGetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
-		http.Error(rw, fmt.Sprintf("Error in request body: %s", err), http.StatusBadRequest)
+		http.Error(rw, fmt.Sprintf("Error in request body: %v", err), http.StatusBadRequest)
 		return
 	}
 
@@ -90,7 +90,8 @@ func (a *App) APIGetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 
 	resp, err := json.Marshal(apiResp)
 	if err != nil {
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		http.Error(rw, err.Error(), http.StatusBadRequest)
+		a.sugar.Errorf("Cannot process body: %v", err)
 		return
 	}
 

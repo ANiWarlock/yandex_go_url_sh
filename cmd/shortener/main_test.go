@@ -37,12 +37,12 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 }
 
 func Test_Router(t *testing.T) {
-	err := logger.Initialize("info")
+	sugar, err := logger.Initialize("info")
 	require.NoError(t, err)
 	cfg, _ := config.InitConfig()
 	store, _ := storage.InitStorage(*cfg)
-	myApp := app.NewApp(cfg, store)
-	ts := httptest.NewServer(router.NewShortenerRouter(myApp))
+	myApp := app.NewApp(cfg, store, sugar)
+	ts := httptest.NewServer(router.NewShortenerRouter(myApp, sugar))
 	defer ts.Close()
 
 	url := "http://ya.ru"

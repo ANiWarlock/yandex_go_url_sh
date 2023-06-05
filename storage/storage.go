@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
-	"github.com/ANiWarlock/yandex_go_url_sh.git/logger"
 	"os"
 )
 
@@ -41,8 +40,6 @@ func InitStorage(cfg config.AppConfig) (*Storage, error) {
 		}
 
 		storage.writer = bufio.NewWriter(file)
-	} else {
-		logger.Sugar.Infoln("Filename не указан, пропускаем загрузку из файла")
 	}
 
 	return &storage, nil
@@ -73,29 +70,29 @@ func (s *Storage) SaveLongURL(hashedURL, longURL string) error {
 
 	s.store[hashedURL] = longURL
 
-	if s.filename != "" {
-		item := Item{
-			UUID:     s.lastUUID + 1,
-			ShortURL: hashedURL,
-			LongURL:  longURL,
-		}
-		data, err := json.Marshal(item)
-		if err != nil {
-			return err
-		}
-
-		if _, err := s.writer.Write(data); err != nil {
-			return err
-		}
-
-		if err := s.writer.WriteByte('\n'); err != nil {
-			return err
-		}
-		s.lastUUID += 1
-		return s.writer.Flush()
+	if s.filename == "" {
+		return nil
 	}
 
-	return nil
+	item := Item{
+		UUID:     s.lastUUID + 1,
+		ShortURL: hashedURL,
+		LongURL:  longURL,
+	}
+	data, err := json.Marshal(item)
+	if err != nil {
+		return err
+	}
+
+	if _, err := s.writer.Write(data); err != nil {
+		return err
+	}
+
+	if err := s.writer.WriteByte('\n'); err != nil {
+		return err
+	}
+	s.lastUUID += 1
+	return s.writer.Flush()
 }
 
 func (s *Storage) GetLongURL(hashedURL string) (string, bool) {

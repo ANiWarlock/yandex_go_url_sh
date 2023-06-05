@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
+	"github.com/ANiWarlock/yandex_go_url_sh.git/logger"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,9 +16,13 @@ import (
 // тесты iter2, теперь проверяет только пост, остальное в main_test.go
 func Test_GetShortURLHandler(t *testing.T) {
 
-	cfg, _ := config.InitConfig()
-	store, _ := storage.InitStorage(*cfg)
-	myApp := NewApp(cfg, store)
+	sugar, err := logger.Initialize("info")
+	require.NoError(t, err)
+	cfg, err := config.InitConfig()
+	require.NoError(t, err)
+	store, err := storage.InitStorage(*cfg)
+	require.NoError(t, err)
+	myApp := NewApp(cfg, store, sugar)
 
 	url := "http://ya.ru"
 	type want struct {

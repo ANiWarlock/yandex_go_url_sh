@@ -11,25 +11,25 @@ import (
 )
 
 func main() {
-	err := logger.Initialize("info")
+	sugar, err := logger.Initialize("info")
 	if err != nil {
-		log.Fatalf("Cannot init logger: %s", err)
+		log.Fatalf("Cannot init logger: %v", err)
 	}
 
 	cfg, err := config.InitConfig()
 	if err != nil {
-		logger.Sugar.Fatalf("Cannot init config: %s", err)
+		sugar.Fatalf("Cannot init config: %v", err)
 	}
 	store, err := storage.InitStorage(*cfg)
 	if err != nil {
-		logger.Sugar.Fatalf("Cannot init storage: %s", err)
+		sugar.Fatalf("Cannot init storage: %v", err)
 	}
-	myApp := app.NewApp(cfg, store)
-	shortRouter := router.NewShortenerRouter(myApp)
+	myApp := app.NewApp(cfg, store, sugar)
+	shortRouter := router.NewShortenerRouter(myApp, sugar)
 
-	logger.Sugar.Infow(
+	sugar.Infow(
 		"Starting server",
 		"addr", cfg.Host,
 	)
-	logger.Sugar.Fatal(http.ListenAndServe(cfg.Host, shortRouter))
+	sugar.Fatal(http.ListenAndServe(cfg.Host, shortRouter))
 }

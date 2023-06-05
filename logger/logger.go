@@ -2,21 +2,21 @@ package logger
 
 import (
 	"go.uber.org/zap"
+	"log"
 )
 
-var Sugar *zap.SugaredLogger
-
-func Initialize(level string) error {
+func Initialize(level string) (sugar *zap.SugaredLogger, error error) {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
-		return err
+		log.Printf("Bad zap.logger level: %s", level)
+		return nil, err
 	}
 	cfg := zap.NewDevelopmentConfig()
 	cfg.Level = lvl
 	zl, err := cfg.Build()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	Sugar = zl.Sugar()
-	return nil
+	sugar = zl.Sugar()
+	return sugar, nil
 }
