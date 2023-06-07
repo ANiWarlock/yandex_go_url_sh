@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/internal/app"
+	"github.com/ANiWarlock/yandex_go_url_sh.git/logger"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/router"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/storage"
 	"github.com/stretchr/testify/assert"
@@ -35,10 +37,17 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 }
 
 func Test_Router(t *testing.T) {
-	cfg, _ := config.InitConfig()
-	store := storage.NewStorage()
-	myApp := app.NewApp(cfg, store)
-	ts := httptest.NewServer(router.NewShortenerRouter(myApp))
+	sugar, err := logger.Initialize("info")
+	require.NoError(t, err)
+
+	cfg, err := config.InitConfig()
+	require.NoError(t, err)
+
+	store, err := storage.InitStorage(*cfg)
+	require.NoError(t, err)
+
+	myApp := app.NewApp(cfg, store, sugar)
+	ts := httptest.NewServer(router.NewShortenerRouter(myApp, sugar))
 	defer ts.Close()
 
 	url := "http://ya.ru"
@@ -47,6 +56,7 @@ func Test_Router(t *testing.T) {
 		code        int
 		contentType string
 		location    string
+		body        string
 	}
 	tests := []struct {
 		name   string
@@ -88,6 +98,17 @@ func Test_Router(t *testing.T) {
 				location:    url,
 			},
 		},
+		{
+			name:   "POST API test #1",
+			method: http.MethodPost,
+			url:    "/api/shorten",
+			body:   fmt.Sprintf("{\"url\":\"%s\"}", url),
+			want: want{
+				code:        201,
+				contentType: "application/json",
+				location:    "",
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -103,10 +124,13 @@ func Test_Router(t *testing.T) {
 			assert.Equal(t, test.want.code, resp.StatusCode)
 			assert.Equal(t, test.want.contentType, resp.Header.Get("Content-Type"))
 
-			if test.method == http.MethodPost && test.body != "" {
+			if test.method == http.MethodPost && test.body != "" && resp.Header.Get("Content-Type") != "application/json" {
 				resHashedURL := resBody[len(resBody)-8:]
 				_, ok := store.GetLongURL(resHashedURL)
 				assert.True(t, ok)
+			} else if test.method == http.MethodPost && resp.Header.Get("Content-Type") == "application/json" {
+				resHashedURL := resBody[len(resBody)-10 : len(resBody)-2]
+				assert.Equal(t, fmt.Sprintf("{\"result\":\"%s/%s\"}", cfg.BaseURL, resHashedURL), resBody)
 			} else if test.method == http.MethodGet {
 				assert.Equal(t, test.want.location, resp.Header.Get("Location"))
 			}

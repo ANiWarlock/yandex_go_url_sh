@@ -1,9 +1,10 @@
 package app
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
-	"fmt"
+	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
@@ -12,7 +13,8 @@ import (
 func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 	responseData, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(rw, fmt.Sprintf("Error in request body: %s", err), http.StatusBadRequest)
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot process body: %v", err)
 		return
 	}
 	if string(responseData) == "" {
@@ -49,6 +51,58 @@ func (a *App) LongURLRedirectHandler(rw http.ResponseWriter, r *http.Request) {
 
 	rw.Header().Set("Location", longURL)
 	rw.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+type APIRequest struct {
+	URL string `json:"url"`
+}
+
+type APIResponse struct {
+	Result string `json:"result"`
+}
+
+func (a *App) APIGetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
+	var buf bytes.Buffer
+	var apiReq APIRequest
+	var apiResp APIResponse
+
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot process body: %v", err)
+		return
+	}
+
+	if err = json.Unmarshal(buf.Bytes(), &apiReq); err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot process body: %v", err)
+		return
+	}
+
+	if apiReq.URL == "" {
+		http.Error(rw, "Empty URL!", http.StatusBadRequest)
+		return
+	}
+
+	longURL := apiReq.URL
+	hashedURL := shorten(longURL)
+	a.storage.SaveLongURL(hashedURL, longURL)
+	shortURL := a.cfg.BaseURL + "/" + hashedURL
+	apiResp.Result = shortURL
+
+	resp, err := json.Marshal(apiResp)
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot process body: %v", err)
+		return
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusCreated)
+	_, err = rw.Write(resp)
+	if err != nil {
+		return
+	}
 }
 
 func shorten(longURL string) string {
