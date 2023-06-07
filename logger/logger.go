@@ -8,7 +8,7 @@ import (
 func Initialize(level string) (sugar *zap.SugaredLogger, error error) {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse level: %w", err)
+		return nil, fmt.Errorf("failed to parse the logging level %s: %w", level, err)
 	}
 	cfg := zap.NewDevelopmentConfig()
 	cfg.Level = lvl

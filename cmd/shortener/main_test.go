@@ -39,8 +39,13 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string, body st
 func Test_Router(t *testing.T) {
 	sugar, err := logger.Initialize("info")
 	require.NoError(t, err)
-	cfg, _ := config.InitConfig()
-	store, _ := storage.InitStorage(*cfg)
+
+	cfg, err := config.InitConfig()
+	require.NoError(t, err)
+
+	store, err := storage.InitStorage(*cfg)
+	require.NoError(t, err)
+
 	myApp := app.NewApp(cfg, store, sugar)
 	ts := httptest.NewServer(router.NewShortenerRouter(myApp, sugar))
 	defer ts.Close()

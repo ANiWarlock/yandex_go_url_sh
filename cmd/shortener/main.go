@@ -31,5 +31,7 @@ func main() {
 		"Starting server",
 		"addr", cfg.Host,
 	)
-	sugar.Fatal(http.ListenAndServe(cfg.Host, shortRouter))
+	if err = http.ListenAndServe(cfg.Host, shortRouter); err != nil {
+		sugar.Fatal("Server error: %v", err)
+	}
 }

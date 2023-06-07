@@ -3,6 +3,7 @@ package storage
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	"os"
 )
@@ -28,19 +29,21 @@ func InitStorage(cfg config.AppConfig) (*Storage, error) {
 		lastUUID: 1,
 	}
 
-	if cfg.Filename != "" {
-		file, err := os.OpenFile(cfg.Filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-		if err != nil {
-			return nil, err
-		}
-
-		err = storage.loadFromFile(file)
-		if err != nil {
-			return nil, err
-		}
-
-		storage.writer = bufio.NewWriter(file)
+	if cfg.Filename == "" {
+		return &storage, nil
 	}
+
+	file, err := os.OpenFile(cfg.Filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return nil, err
+	}
+
+	err = storage.loadFromFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	storage.writer = bufio.NewWriter(file)
 
 	return &storage, nil
 }
@@ -52,7 +55,7 @@ func (s *Storage) loadFromFile(file *os.File) error {
 		var line Item
 		err := json.Unmarshal(scanner.Bytes(), &line)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to unmarshal a line from the file storage document: %w", err)
 		}
 
 		s.store[line.ShortURL] = line.LongURL
@@ -81,7 +84,7 @@ func (s *Storage) SaveLongURL(hashedURL, longURL string) error {
 	}
 	data, err := json.Marshal(item)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal item: %w", err)
 	}
 
 	if _, err := s.writer.Write(data); err != nil {
