@@ -105,6 +105,15 @@ func (a *App) APIGetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *App) PingHandler(rw http.ResponseWriter, r *http.Request) {
+	if a.storage.PiingDB() {
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	} else {
+		rw.WriteHeader(http.StatusOK)
+	}
+}
+
 func shorten(longURL string) string {
 	hashedString := sha1.Sum([]byte(longURL))
 	return hex.EncodeToString(hashedString[:4])

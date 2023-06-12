@@ -2,9 +2,11 @@ package storage
 
 import (
 	"bufio"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"os"
 )
 
@@ -14,6 +16,7 @@ type Storage struct {
 	file     *os.File
 	writer   *bufio.Writer
 	lastUUID int
+	db       *sql.DB
 }
 
 type Item struct {
@@ -29,21 +32,30 @@ func InitStorage(cfg config.AppConfig) (*Storage, error) {
 		lastUUID: 1,
 	}
 
-	if cfg.Filename == "" {
-		return &storage, nil
+	if cfg.Filename != "" {
+		file, err := os.OpenFile(cfg.Filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open file: %w", err)
+		}
+
+		err = storage.loadFromFile(file)
+		if err != nil {
+			return nil, err
+		}
+
+		storage.writer = bufio.NewWriter(file)
+
 	}
 
-	file, err := os.OpenFile(cfg.Filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, err
+	if cfg.DatabaseDSN != "" {
+		db, err := sql.Open("pgx", cfg.DatabaseDSN)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open db connection: %w", err)
+			//return &storage, nil
+		}
+		storage.db = db
+		defer storage.db.Close()
 	}
-
-	err = storage.loadFromFile(file)
-	if err != nil {
-		return nil, err
-	}
-
-	storage.writer = bufio.NewWriter(file)
 
 	return &storage, nil
 }
@@ -106,4 +118,14 @@ func (s *Storage) GetLongURL(hashedURL string) (string, bool) {
 	}
 
 	return longURL, true
+}
+
+func (s *Storage) PiingDB() bool {
+	if s.db != nil {
+		if err := s.db.Ping(); err == nil {
+			return true
+		}
+	}
+
+	return false
 }
