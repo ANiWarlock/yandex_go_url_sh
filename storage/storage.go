@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"os"
 )
@@ -42,6 +44,11 @@ func InitStorage(cfg config.AppConfig) (*Storage, error) {
 		_, err = db.Exec("CREATE TABLE IF NOT EXISTS urls (id SERIAL PRIMARY KEY , short varchar(16) NOT NULL, long varchar(255) NOT NULL)")
 		if err != nil {
 			return nil, fmt.Errorf("failed to create db table: %w", err)
+		}
+
+		_, err = db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS  long_url_idx ON urls (long)")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create unique index: %w", err)
 		}
 
 		storage.db = db
@@ -92,17 +99,15 @@ func (s *Storage) SaveLongURL(hashedURL, longURL string) error {
 	}
 
 	if s.db != nil {
-		itemFromDB, err := s.getItemFromDB(longURL, "long")
-		if err != nil {
-			return err
-		}
-
-		if itemFromDB != (Item{}) {
-			return nil
-		}
-
-		err = s.saveItemToDB(item)
-		if err != nil {
+		if err := s.saveItemToDB(item); err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr); pgErr.Code == pgerrcode.UniqueViolation {
+				getItem, getErr := s.getItemFromDB(longURL, "long")
+				if getErr != nil {
+					return getErr
+				}
+				return &UniqueViolationError{Err: err, ShortURL: getItem.ShortURL}
+			}
 			return err
 		}
 
@@ -199,4 +204,13 @@ func (s *Storage) CloseDB() error {
 		}
 	}
 	return nil
+}
+
+type UniqueViolationError struct {
+	Err      error
+	ShortURL string
+}
+
+func (uve *UniqueViolationError) Error() string {
+	return fmt.Sprintf("%s | %v", uve.ShortURL, uve.Err)
 }

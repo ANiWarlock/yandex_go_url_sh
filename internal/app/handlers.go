@@ -5,6 +5,8 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"github.com/ANiWarlock/yandex_go_url_sh.git/storage"
 	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
@@ -24,11 +26,23 @@ func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 
 	longURL := string(responseData)
 	hashedURL := shorten(longURL)
-	a.storage.SaveLongURL(hashedURL, longURL)
+
+	if err := a.storage.SaveLongURL(hashedURL, longURL); err != nil {
+		var uve *storage.UniqueViolationError
+		if errors.As(err, &uve) {
+			rw.WriteHeader(http.StatusConflict)
+			_, err := rw.Write([]byte(a.cfg.BaseURL + "/" + uve.ShortURL))
+			if err != nil {
+				return
+			}
+			return
+		}
+		http.Error(rw, "Server Error", http.StatusBadRequest)
+	}
 	shortURL := a.cfg.BaseURL + "/" + hashedURL
 
-	rw.WriteHeader(http.StatusCreated)
 	rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	rw.WriteHeader(http.StatusCreated)
 	_, err = rw.Write([]byte(shortURL))
 	if err != nil {
 		return
@@ -86,8 +100,29 @@ func (a *App) APIGetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 
 	longURL := apiReq.URL
 	hashedURL := shorten(longURL)
-	a.storage.SaveLongURL(hashedURL, longURL)
 	shortURL := a.cfg.BaseURL + "/" + hashedURL
+	if err = a.storage.SaveLongURL(hashedURL, longURL); err != nil {
+		var uve *storage.UniqueViolationError
+		if errors.As(err, &uve) {
+
+			apiResp.Result = a.cfg.BaseURL + "/" + uve.ShortURL
+
+			resp, err := json.Marshal(apiResp)
+			if err != nil {
+				rw.WriteHeader(http.StatusBadRequest)
+				a.sugar.Errorf("Cannot process body: %v", err)
+				return
+			}
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(http.StatusConflict)
+			_, err = rw.Write(resp)
+			if err != nil {
+				return
+			}
+			return
+		}
+		http.Error(rw, "Server Error", http.StatusBadRequest)
+	}
 	apiResp.Result = shortURL
 
 	resp, err := json.Marshal(apiResp)
