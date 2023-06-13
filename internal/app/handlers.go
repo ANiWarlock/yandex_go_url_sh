@@ -105,6 +105,68 @@ func (a *App) APIGetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type APIBatchRequest struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+type APIBatchResponse struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
+func (a *App) APIBatchHandler(rw http.ResponseWriter, r *http.Request) {
+	var buf bytes.Buffer
+	var apiReq []APIBatchRequest
+	var apiResp []APIBatchResponse
+
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot process body: %v", err)
+		return
+	}
+
+	if err = json.Unmarshal(buf.Bytes(), &apiReq); err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot process body: %v", err)
+		return
+	}
+
+	for _, v := range apiReq {
+		if v.OriginalURL == "" {
+			http.Error(rw, "Empty URL!", http.StatusBadRequest)
+			return
+		}
+
+		if v.CorrelationID == "" {
+			http.Error(rw, "Empty correlation ID!", http.StatusBadRequest)
+			return
+		}
+
+		longURL := v.OriginalURL
+		hashedURL := shorten(longURL)
+		a.storage.SaveLongURL(hashedURL, longURL)
+		shortURL := a.cfg.BaseURL + "/" + hashedURL
+
+		apiResp = append(apiResp, APIBatchResponse{CorrelationID: v.CorrelationID, ShortURL: shortURL})
+	}
+
+	resp, err := json.Marshal(apiResp)
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot process body: %v", err)
+		return
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusCreated)
+	_, err = rw.Write(resp)
+	if err != nil {
+		return
+	}
+}
+
 func (a *App) PingHandler(rw http.ResponseWriter, r *http.Request) {
 	if a.storage.PingDB() {
 		rw.WriteHeader(http.StatusOK)
