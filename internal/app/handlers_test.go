@@ -78,8 +78,8 @@ func Test_GetShortURLHandler(t *testing.T) {
 
 			if test.body != "" {
 				resHashedURL := string(resBody[len(resBody)-8:])
-				_, ok := store.GetLongURL(resHashedURL)
-				assert.True(t, ok)
+				_, err := store.GetLongURL(resHashedURL)
+				assert.NoError(t, err)
 			}
 		})
 	}

@@ -43,8 +43,8 @@ func (a *App) LongURLRedirectHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	longURL, ok := a.storage.GetLongURL(shortURL)
-	if !ok {
+	longURL, err := a.storage.GetLongURL(shortURL)
+	if err != nil {
 		http.Error(rw, "Not Found", http.StatusNotFound)
 		return
 	}
@@ -106,11 +106,11 @@ func (a *App) APIGetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) PingHandler(rw http.ResponseWriter, r *http.Request) {
-	if a.storage.PiingDB() {
-		rw.WriteHeader(http.StatusInternalServerError)
+	if a.storage.PingDB() {
+		rw.WriteHeader(http.StatusOK)
 		return
 	} else {
-		rw.WriteHeader(http.StatusOK)
+		rw.WriteHeader(http.StatusInternalServerError)
 	}
 }
 

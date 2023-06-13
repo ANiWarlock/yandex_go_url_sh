@@ -27,7 +27,7 @@ func (c *AppConfig) parseFlags() {
 	flag.StringVar(&c.Host, "a", "localhost:8080", "Укажите адрес в формате host:port")
 	flag.StringVar(&c.BaseURL, "b", "http://localhost:8080", "Укажите возвращаемый адрес в формате http://host:port")
 	flag.StringVar(&c.Filename, "f", "/tmp/short-url-db.json", "Полное имя файла, куда сохраняются данные в формате JSON")
-	flag.StringVar(&c.DatabaseDSN, "d", "host=localhost port=5433 user=postgres password=postgres dbname=postgres sslmode=disable", "Параметры подключения к БД")
+	flag.StringVar(&c.DatabaseDSN, "d", "", "Параметры подключения к БД")
 	flag.Parse()
 }
 
