@@ -8,30 +8,78 @@ import (
 	"errors"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/storage"
 	"github.com/go-chi/chi/v5"
-	"io"
 	"net/http"
 )
 
+type APIRequest struct {
+	URL string `json:"url"`
+}
+
+type APIResponse struct {
+	Result string `json:"result"`
+}
+
 func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
-	responseData, err := io.ReadAll(r.Body)
+	var buf bytes.Buffer
+	var apiReq APIRequest
+	var apiResp APIResponse
+	var longURL string
+	var resp []byte
+
+	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
 		a.sugar.Errorf("Cannot process body: %v", err)
 		return
 	}
-	if string(responseData) == "" {
-		http.Error(rw, "Empty body!", http.StatusBadRequest)
-		return
+
+	switch r.URL.Path {
+	case "/":
+		if string(buf.Bytes()) == "" {
+			http.Error(rw, "Empty body!", http.StatusBadRequest)
+			return
+		}
+		rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		longURL = string(buf.Bytes())
+	case "/api/shorten":
+		if err = json.Unmarshal(buf.Bytes(), &apiReq); err != nil {
+			rw.WriteHeader(http.StatusBadRequest)
+			a.sugar.Errorf("Cannot process body: %v", err)
+			return
+		}
+
+		if apiReq.URL == "" {
+			http.Error(rw, "Empty URL!", http.StatusBadRequest)
+			return
+		}
+		rw.Header().Set("Content-Type", "application/json")
+
+		longURL = apiReq.URL
 	}
 
-	longURL := string(responseData)
 	hashedURL := shorten(longURL)
+	shortURL := a.cfg.BaseURL + "/" + hashedURL
 
-	if err := a.storage.SaveLongURL(hashedURL, longURL); err != nil {
+	if err = a.storage.SaveLongURL(hashedURL, longURL); err != nil {
 		var uve *storage.UniqueViolationError
 		if errors.As(err, &uve) {
+
+			switch r.URL.Path {
+			case "/":
+				resp = []byte(a.cfg.BaseURL + "/" + uve.ShortURL)
+			case "/api/shorten":
+				apiResp.Result = a.cfg.BaseURL + "/" + uve.ShortURL
+
+				resp, err = json.Marshal(apiResp)
+				if err != nil {
+					rw.WriteHeader(http.StatusBadRequest)
+					a.sugar.Errorf("Cannot process body: %v", err)
+					return
+				}
+			}
+
 			rw.WriteHeader(http.StatusConflict)
-			_, err := rw.Write([]byte(a.cfg.BaseURL + "/" + uve.ShortURL))
+			_, err = rw.Write(resp)
 			if err != nil {
 				return
 			}
@@ -39,14 +87,27 @@ func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 		}
 		http.Error(rw, "Server Error", http.StatusBadRequest)
 	}
-	shortURL := a.cfg.BaseURL + "/" + hashedURL
 
-	rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	switch r.URL.Path {
+	case "/":
+		resp = []byte(shortURL)
+	case "/api/shorten":
+		apiResp.Result = shortURL
+
+		resp, err = json.Marshal(apiResp)
+		if err != nil {
+			rw.WriteHeader(http.StatusBadRequest)
+			a.sugar.Errorf("Cannot process body: %v", err)
+			return
+		}
+	}
+
 	rw.WriteHeader(http.StatusCreated)
-	_, err = rw.Write([]byte(shortURL))
+	_, err = rw.Write(resp)
 	if err != nil {
 		return
 	}
+
 }
 
 func (a *App) LongURLRedirectHandler(rw http.ResponseWriter, r *http.Request) {
@@ -65,79 +126,6 @@ func (a *App) LongURLRedirectHandler(rw http.ResponseWriter, r *http.Request) {
 
 	rw.Header().Set("Location", longURL)
 	rw.WriteHeader(http.StatusTemporaryRedirect)
-}
-
-type APIRequest struct {
-	URL string `json:"url"`
-}
-
-type APIResponse struct {
-	Result string `json:"result"`
-}
-
-func (a *App) APIGetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
-	var buf bytes.Buffer
-	var apiReq APIRequest
-	var apiResp APIResponse
-
-	_, err := buf.ReadFrom(r.Body)
-	if err != nil {
-		rw.WriteHeader(http.StatusBadRequest)
-		a.sugar.Errorf("Cannot process body: %v", err)
-		return
-	}
-
-	if err = json.Unmarshal(buf.Bytes(), &apiReq); err != nil {
-		rw.WriteHeader(http.StatusBadRequest)
-		a.sugar.Errorf("Cannot process body: %v", err)
-		return
-	}
-
-	if apiReq.URL == "" {
-		http.Error(rw, "Empty URL!", http.StatusBadRequest)
-		return
-	}
-
-	longURL := apiReq.URL
-	hashedURL := shorten(longURL)
-	shortURL := a.cfg.BaseURL + "/" + hashedURL
-	if err = a.storage.SaveLongURL(hashedURL, longURL); err != nil {
-		var uve *storage.UniqueViolationError
-		if errors.As(err, &uve) {
-
-			apiResp.Result = a.cfg.BaseURL + "/" + uve.ShortURL
-
-			resp, err := json.Marshal(apiResp)
-			if err != nil {
-				rw.WriteHeader(http.StatusBadRequest)
-				a.sugar.Errorf("Cannot process body: %v", err)
-				return
-			}
-			rw.Header().Set("Content-Type", "application/json")
-			rw.WriteHeader(http.StatusConflict)
-			_, err = rw.Write(resp)
-			if err != nil {
-				return
-			}
-			return
-		}
-		http.Error(rw, "Server Error", http.StatusBadRequest)
-	}
-	apiResp.Result = shortURL
-
-	resp, err := json.Marshal(apiResp)
-	if err != nil {
-		rw.WriteHeader(http.StatusBadRequest)
-		a.sugar.Errorf("Cannot process body: %v", err)
-		return
-	}
-
-	rw.Header().Set("Content-Type", "application/json")
-	rw.WriteHeader(http.StatusCreated)
-	_, err = rw.Write(resp)
-	if err != nil {
-		return
-	}
 }
 
 type APIBatchRequest struct {
@@ -203,11 +191,11 @@ func (a *App) APIBatchHandler(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) PingHandler(rw http.ResponseWriter, r *http.Request) {
-	if a.storage.PingDB() {
-		rw.WriteHeader(http.StatusOK)
+	if err := a.storage.PingDB(); err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	} else {
-		rw.WriteHeader(http.StatusInternalServerError)
+		rw.WriteHeader(http.StatusOK)
 	}
 }
 

@@ -165,14 +165,15 @@ func (s *Storage) GetLongURL(hashedURL string) (string, error) {
 	return longURL, nil
 }
 
-func (s *Storage) PingDB() bool {
-	if s.db != nil {
-		if err := s.db.Ping(); err == nil {
-			return true
-		}
+func (s *Storage) PingDB() error {
+	if s.db == nil {
+		return errors.New("DB not configured")
+	}
+	if err := s.db.Ping(); err != nil {
+		return err
 	}
 
-	return false
+	return nil
 }
 
 func (s *Storage) getItemFromDB(longURL, field string) (Item, error) {
@@ -198,10 +199,11 @@ func (s *Storage) saveItemToDB(item Item) error {
 }
 
 func (s *Storage) CloseDB() error {
-	if s.db != nil {
-		if err := s.db.Close(); err != nil {
-			return fmt.Errorf("cannot close db: %w", err)
-		}
+	if s.db == nil {
+		return nil
+	}
+	if err := s.db.Close(); err != nil {
+		return fmt.Errorf("cannot close db: %w", err)
 	}
 	return nil
 }
