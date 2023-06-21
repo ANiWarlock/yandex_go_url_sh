@@ -7,7 +7,7 @@ import (
 )
 
 type Storage interface {
-	SaveLongURL(string, string) (*Item, error)
+	SaveLongURL(string, string) error
 	GetLongURL(string) (*Item, error)
 	Ping() error
 	CloseDB() error

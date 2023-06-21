@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -37,40 +35,39 @@ func InitDBStorage(cfg config.AppConfig) (*DBStorage, error) {
 	return &dbStore, nil
 }
 
-func (dbs *DBStorage) SaveLongURL(hashedURL, longURL string) (*Item, error) {
+func (dbs *DBStorage) SaveLongURL(hashedURL, longURL string) error {
 	item := Item{
 		ShortURL: hashedURL,
 		LongURL:  longURL,
 	}
 
-	if err := dbs.saveItemToDB(item); err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr); pgErr.Code == pgerrcode.UniqueViolation {
-			getItem, getErr := dbs.getItemFromDB(longURL, "long")
-			if getErr != nil {
-				return &item, getErr
-			}
-			return &item, &UniqueViolationError{Err: err, ShortURL: getItem.ShortURL}
-		}
-		return &item, err
+	result, err := dbs.db.Exec("INSERT INTO urls (short, long) VALUES ($1, $2) ON CONFLICT (long) DO NOTHING;", item.ShortURL, item.LongURL)
+	if err != nil {
+		return fmt.Errorf("cannot save to db: %w", err)
 	}
 
-	return &item, nil
-
+	count, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("cannot save to db: %w", err)
+	}
+	if count == 0 {
+		return &UniqueViolationError{ShortURL: item.ShortURL}
+	}
+	return nil
 }
 
 func (dbs *DBStorage) GetLongURL(hashedURL string) (*Item, error) {
-	itemFromDB, err := dbs.getItemFromDB(hashedURL, "short")
-	if err != nil {
-		return &Item{}, err
-	}
-
-	if itemFromDB == nil {
+	var itemFromDB Item
+	row := dbs.db.QueryRow("SELECT id, short, long  FROM urls WHERE short = $1;", hashedURL)
+	err := row.Scan(&itemFromDB.UUID, &itemFromDB.ShortURL, &itemFromDB.LongURL)
+	if err == sql.ErrNoRows {
 		return nil, errors.New("longURL not found")
 	}
+	if err != nil {
+		return nil, fmt.Errorf("failed scanning row: %w", err)
+	}
 
-	return itemFromDB, nil
-
+	return &itemFromDB, nil
 }
 
 func (dbs *DBStorage) Ping() error {
@@ -78,28 +75,6 @@ func (dbs *DBStorage) Ping() error {
 		return err
 	}
 
-	return nil
-}
-
-func (dbs *DBStorage) getItemFromDB(longURL, field string) (*Item, error) {
-	var item Item
-	row := dbs.db.QueryRow("SELECT id, short, long  FROM urls WHERE "+field+" = $1;", longURL)
-	err := row.Scan(&item.UUID, &item.ShortURL, &item.LongURL)
-	if err == sql.ErrNoRows {
-		return &item, nil
-	}
-	if err != nil {
-		return &item, fmt.Errorf("failed scanning row: %w", err)
-	}
-
-	return &item, nil
-}
-
-func (dbs *DBStorage) saveItemToDB(item Item) error {
-	_, err := dbs.db.Exec("INSERT INTO urls (short, long) VALUES ($1, $2);", item.ShortURL, item.LongURL)
-	if err != nil {
-		return fmt.Errorf("cannot save to db: %w", err)
-	}
 	return nil
 }
 
@@ -114,10 +89,9 @@ func (dbs *DBStorage) CloseDB() error {
 }
 
 type UniqueViolationError struct {
-	Err      error
 	ShortURL string
 }
 
 func (uve *UniqueViolationError) Error() string {
-	return fmt.Sprintf("%s | %v", uve.ShortURL, uve.Err)
+	return uve.ShortURL
 }

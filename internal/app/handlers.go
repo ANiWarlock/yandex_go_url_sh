@@ -60,7 +60,7 @@ func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 	hashedURL := shorten(longURL)
 	shortURL := a.cfg.BaseURL + "/" + hashedURL
 
-	if _, err := a.storage.SaveLongURL(hashedURL, longURL); err != nil {
+	if err = a.storage.SaveLongURL(hashedURL, longURL); err != nil {
 		var uve *storage.UniqueViolationError
 		if errors.As(err, &uve) {
 

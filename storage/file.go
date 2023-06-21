@@ -41,7 +41,7 @@ func InitFileStorage(cfg config.AppConfig) (*FileStorage, error) {
 	return &fileStore, nil
 }
 
-func (fs *FileStorage) SaveLongURL(hashedURL, longURL string) (*Item, error) {
+func (fs *FileStorage) SaveLongURL(hashedURL, longURL string) error {
 	item := Item{
 		ShortURL: hashedURL,
 		LongURL:  longURL,
@@ -49,7 +49,7 @@ func (fs *FileStorage) SaveLongURL(hashedURL, longURL string) (*Item, error) {
 
 	exist := fs.memStore.store[hashedURL] != ""
 	if exist {
-		return &item, nil
+		return nil
 	}
 
 	fs.memStore.store[hashedURL] = longURL
@@ -57,19 +57,19 @@ func (fs *FileStorage) SaveLongURL(hashedURL, longURL string) (*Item, error) {
 	item.UUID = fs.lastUUID + 1
 	data, err := json.Marshal(item)
 	if err != nil {
-		return &item, fmt.Errorf("failed to marshal item: %w", err)
+		return fmt.Errorf("failed to marshal item: %w", err)
 	}
 
 	if _, err := fs.writer.Write(data); err != nil {
-		return &item, err
+		return err
 	}
 
 	if err := fs.writer.WriteByte('\n'); err != nil {
-		return &item, err
+		return err
 	}
 	fs.lastUUID += 1
 	fs.writer.Flush()
-	return &item, nil
+	return nil
 }
 
 func (fs *FileStorage) GetLongURL(hashedURL string) (*Item, error) {

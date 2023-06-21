@@ -18,19 +18,13 @@ func InitMemStorage(cfg config.AppConfig) *MemStorage {
 	return &memStore
 }
 
-func (ms *MemStorage) SaveLongURL(hashedURL, longURL string) (*Item, error) {
-	item := Item{
-		ShortURL: hashedURL,
-		LongURL:  longURL,
-	}
-
+func (ms *MemStorage) SaveLongURL(hashedURL, longURL string) error {
 	if ms.store[hashedURL] != "" {
-		item.LongURL = ms.store[hashedURL]
-		return &item, nil
+		return nil
 	}
 
 	ms.store[hashedURL] = longURL
-	return &item, nil
+	return nil
 }
 
 func (ms *MemStorage) GetLongURL(hashedURL string) (*Item, error) {
