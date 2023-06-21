@@ -9,6 +9,7 @@ import (
 type Storage interface {
 	SaveLongURL(string, string) error
 	GetLongURL(string) (*Item, error)
+	BatchInsert(batchList []Item) error
 	Ping() error
 	CloseDB() error
 }

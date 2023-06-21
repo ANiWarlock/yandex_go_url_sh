@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -24,6 +25,16 @@ func (ms *MemStorage) SaveLongURL(hashedURL, longURL string) error {
 	}
 
 	ms.store[hashedURL] = longURL
+	return nil
+}
+
+func (ms *MemStorage) BatchInsert(items []Item) error {
+	for _, item := range items {
+		err := ms.SaveLongURL(item.ShortURL, item.LongURL)
+		if err != nil {
+			return fmt.Errorf("failed to batch save item: %w", err)
+		}
+	}
 	return nil
 }
 

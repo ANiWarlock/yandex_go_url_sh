@@ -72,6 +72,16 @@ func (fs *FileStorage) SaveLongURL(hashedURL, longURL string) error {
 	return nil
 }
 
+func (fs *FileStorage) BatchInsert(items []Item) error {
+	for _, item := range items {
+		err := fs.SaveLongURL(item.ShortURL, item.LongURL)
+		if err != nil {
+			return fmt.Errorf("failed to batch save item: %w", err)
+		}
+	}
+	return nil
+}
+
 func (fs *FileStorage) GetLongURL(hashedURL string) (*Item, error) {
 	item := Item{
 		ShortURL: hashedURL,

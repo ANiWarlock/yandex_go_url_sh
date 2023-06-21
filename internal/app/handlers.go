@@ -142,6 +142,7 @@ func (a *App) APIBatchHandler(rw http.ResponseWriter, r *http.Request) {
 	var buf bytes.Buffer
 	var apiReq []APIBatchRequest
 	var apiResp []APIBatchResponse
+	var items []storage.Item
 
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
@@ -156,6 +157,7 @@ func (a *App) APIBatchHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// собирем ответ
 	for _, v := range apiReq {
 		if v.OriginalURL == "" {
 			http.Error(rw, "Empty URL!", http.StatusBadRequest)
@@ -169,10 +171,18 @@ func (a *App) APIBatchHandler(rw http.ResponseWriter, r *http.Request) {
 
 		longURL := v.OriginalURL
 		hashedURL := shorten(longURL)
-		a.storage.SaveLongURL(hashedURL, longURL)
 		shortURL := a.cfg.BaseURL + "/" + hashedURL
 
+		items = append(items, storage.Item{LongURL: longURL, ShortURL: hashedURL})
 		apiResp = append(apiResp, APIBatchResponse{CorrelationID: v.CorrelationID, ShortURL: shortURL})
+	}
+
+	// сохраняем
+	err = a.storage.BatchInsert(items)
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot batch save: %v", err)
+		return
 	}
 
 	resp, err := json.Marshal(apiResp)
