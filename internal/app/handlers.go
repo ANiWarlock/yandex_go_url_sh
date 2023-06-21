@@ -35,12 +35,12 @@ func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 
 	switch r.URL.Path {
 	case "/":
-		if string(buf.Bytes()) == "" {
+		if buf.String() == "" {
 			http.Error(rw, "Empty body!", http.StatusBadRequest)
 			return
 		}
 		rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		longURL = string(buf.Bytes())
+		longURL = buf.String()
 	case "/api/shorten":
 		if err = json.Unmarshal(buf.Bytes(), &apiReq); err != nil {
 			rw.WriteHeader(http.StatusBadRequest)
@@ -60,7 +60,7 @@ func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 	hashedURL := shorten(longURL)
 	shortURL := a.cfg.BaseURL + "/" + hashedURL
 
-	if err = a.storage.SaveLongURL(hashedURL, longURL); err != nil {
+	if _, err := a.storage.SaveLongURL(hashedURL, longURL); err != nil {
 		var uve *storage.UniqueViolationError
 		if errors.As(err, &uve) {
 
@@ -118,13 +118,13 @@ func (a *App) LongURLRedirectHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	longURL, err := a.storage.GetLongURL(shortURL)
+	item, err := a.storage.GetLongURL(shortURL)
 	if err != nil {
 		http.Error(rw, "Not Found", http.StatusNotFound)
 		return
 	}
 
-	rw.Header().Set("Location", longURL)
+	rw.Header().Set("Location", item.LongURL)
 	rw.WriteHeader(http.StatusTemporaryRedirect)
 }
 
@@ -191,7 +191,7 @@ func (a *App) APIBatchHandler(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) PingHandler(rw http.ResponseWriter, r *http.Request) {
-	if err := a.storage.PingDB(); err != nil {
+	if err := a.storage.Ping(); err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	} else {

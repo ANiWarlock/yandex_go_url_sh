@@ -21,7 +21,12 @@ func main() {
 		sugar.Fatalf("Cannot init config: %v", err)
 	}
 	store, err := storage.InitStorage(*cfg)
-	defer store.CloseDB()
+	if err != nil {
+		sugar.Fatalf("Cannot init storage: %v", err)
+	}
+	if err = store.Ping(); err != nil {
+		defer store.CloseDB()
+	}
 	if err != nil {
 		sugar.Fatalf("Cannot init storage: %v", err)
 	}
