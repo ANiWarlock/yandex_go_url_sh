@@ -13,8 +13,10 @@ func NewShortenerRouter(myApp *app.App, sugar *zap.SugaredLogger) chi.Router {
 	r.Use(middleware.Gzip)
 
 	r.Post("/", myApp.GetShortURLHandler)
-	r.Post("/api/shorten", myApp.APIGetShortURLHandler)
+	r.Post("/api/shorten", myApp.GetShortURLHandler)
+	r.Post("/api/shorten/batch", myApp.APIBatchHandler)
 	r.Get("/{shortURL}", myApp.LongURLRedirectHandler)
+	r.Get("/ping", myApp.PingHandler)
 
 	return r
 }

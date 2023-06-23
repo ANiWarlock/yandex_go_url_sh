@@ -8,11 +8,11 @@ import (
 
 type App struct {
 	cfg     *config.AppConfig
-	storage *storage.Storage
+	storage storage.Storage
 	sugar   *zap.SugaredLogger
 }
 
-func NewApp(cfg *config.AppConfig, store *storage.Storage, sugar *zap.SugaredLogger) *App {
+func NewApp(cfg *config.AppConfig, store storage.Storage, sugar *zap.SugaredLogger) *App {
 	return &App{
 		cfg:     cfg,
 		storage: store,

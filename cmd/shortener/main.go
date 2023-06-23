@@ -24,6 +24,11 @@ func main() {
 	if err != nil {
 		sugar.Fatalf("Cannot init storage: %v", err)
 	}
+	defer store.CloseDB()
+
+	if err != nil {
+		sugar.Fatalf("Cannot init storage: %v", err)
+	}
 	myApp := app.NewApp(cfg, store, sugar)
 	shortRouter := router.NewShortenerRouter(myApp, sugar)
 

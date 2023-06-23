@@ -44,6 +44,7 @@ func Test_Router(t *testing.T) {
 	require.NoError(t, err)
 
 	store, err := storage.InitStorage(*cfg)
+	defer store.CloseDB()
 	require.NoError(t, err)
 
 	myApp := app.NewApp(cfg, store, sugar)
@@ -126,8 +127,8 @@ func Test_Router(t *testing.T) {
 
 			if test.method == http.MethodPost && test.body != "" && resp.Header.Get("Content-Type") != "application/json" {
 				resHashedURL := resBody[len(resBody)-8:]
-				_, ok := store.GetLongURL(resHashedURL)
-				assert.True(t, ok)
+				_, err := store.GetLongURL(resHashedURL)
+				assert.NoError(t, err)
 			} else if test.method == http.MethodPost && resp.Header.Get("Content-Type") == "application/json" {
 				resHashedURL := resBody[len(resBody)-10 : len(resBody)-2]
 				assert.Equal(t, fmt.Sprintf("{\"result\":\"%s/%s\"}", cfg.BaseURL, resHashedURL), resBody)

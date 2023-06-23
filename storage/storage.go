@@ -1,19 +1,17 @@
 package storage
 
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
-	"os"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-type Storage struct {
-	store    map[string]string
-	filename string
-	file     *os.File
-	writer   *bufio.Writer
-	lastUUID int
+type Storage interface {
+	SaveLongURL(string, string) error
+	GetLongURL(string) (*Item, error)
+	BatchInsert(batchList []Item) error
+	Ping() error
+	CloseDB() error
 }
 
 type Item struct {
@@ -22,88 +20,28 @@ type Item struct {
 	LongURL  string `json:"original_url"`
 }
 
-func InitStorage(cfg config.AppConfig) (*Storage, error) {
-	storage := Storage{
-		store:    make(map[string]string),
-		filename: cfg.Filename,
-		lastUUID: 1,
-	}
+var defaultStorage Storage
 
-	if cfg.Filename == "" {
-		return &storage, nil
-	}
-
-	file, err := os.OpenFile(cfg.Filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, err
-	}
-
-	err = storage.loadFromFile(file)
-	if err != nil {
-		return nil, err
-	}
-
-	storage.writer = bufio.NewWriter(file)
-
-	return &storage, nil
-}
-
-func (s *Storage) loadFromFile(file *os.File) error {
-	scanner := bufio.NewScanner(file)
-
-	for scanner.Scan() {
-		var line Item
-		err := json.Unmarshal(scanner.Bytes(), &line)
+func InitStorage(cfg config.AppConfig) (Storage, error) {
+	var err error
+	if cfg.DatabaseDSN != "" {
+		defaultStorage, err = InitDBStorage(cfg)
 		if err != nil {
-			return fmt.Errorf("failed to unmarshal a line from the file storage document: %w", err)
+			return nil, fmt.Errorf("failed to init db storage: %w", err)
 		}
 
-		s.store[line.ShortURL] = line.LongURL
-		s.lastUUID = line.UUID
+		return defaultStorage, nil
 	}
 
-	return nil
-}
-
-func (s *Storage) SaveLongURL(hashedURL, longURL string) error {
-	exist := s.store[hashedURL] != ""
-	if exist {
-		return nil
+	if cfg.Filename != "" {
+		defaultStorage, err = InitFileStorage(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to init file storage: %w", err)
+		}
+		return defaultStorage, nil
 	}
 
-	s.store[hashedURL] = longURL
+	defaultStorage = InitMemStorage(cfg)
 
-	if s.filename == "" {
-		return nil
-	}
-
-	item := Item{
-		UUID:     s.lastUUID + 1,
-		ShortURL: hashedURL,
-		LongURL:  longURL,
-	}
-	data, err := json.Marshal(item)
-	if err != nil {
-		return fmt.Errorf("failed to marshal item: %w", err)
-	}
-
-	if _, err := s.writer.Write(data); err != nil {
-		return err
-	}
-
-	if err := s.writer.WriteByte('\n'); err != nil {
-		return err
-	}
-	s.lastUUID += 1
-	return s.writer.Flush()
-}
-
-func (s *Storage) GetLongURL(hashedURL string) (string, bool) {
-	longURL := s.store[hashedURL]
-
-	if longURL == "" {
-		return "", false
-	}
-
-	return longURL, true
+	return defaultStorage, nil
 }
