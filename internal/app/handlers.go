@@ -61,14 +61,13 @@ func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 	shortURL := a.cfg.BaseURL + "/" + hashedURL
 
 	if err = a.storage.SaveLongURL(hashedURL, longURL); err != nil {
-		var uve *storage.UniqueViolationError
-		if errors.As(err, &uve) {
+		if errors.Unwrap(err) == storage.ErrUniqueViolation {
 
 			switch r.URL.Path {
 			case "/":
-				resp = []byte(a.cfg.BaseURL + "/" + uve.ShortURL)
+				resp = []byte(shortURL)
 			case "/api/shorten":
-				apiResp.Result = a.cfg.BaseURL + "/" + uve.ShortURL
+				apiResp.Result = shortURL
 
 				resp, err = json.Marshal(apiResp)
 				if err != nil {
@@ -157,7 +156,7 @@ func (a *App) APIBatchHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// собирем ответ
+	// собираем ответ
 	for _, v := range apiReq {
 		if v.OriginalURL == "" {
 			http.Error(rw, "Empty URL!", http.StatusBadRequest)

@@ -24,9 +24,8 @@ func main() {
 	if err != nil {
 		sugar.Fatalf("Cannot init storage: %v", err)
 	}
-	if err = store.Ping(); err != nil {
-		defer store.CloseDB()
-	}
+	defer store.CloseDB()
+
 	if err != nil {
 		sugar.Fatalf("Cannot init storage: %v", err)
 	}
