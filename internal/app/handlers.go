@@ -61,7 +61,7 @@ func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 	shortURL := a.cfg.BaseURL + "/" + hashedURL
 
 	if err = a.storage.SaveLongURL(hashedURL, longURL); err != nil {
-		if errors.Unwrap(err) == storage.ErrUniqueViolation {
+		if errors.Is(err, storage.ErrUniqueViolation) {
 
 			switch r.URL.Path {
 			case "/":
