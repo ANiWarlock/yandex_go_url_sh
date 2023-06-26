@@ -7,15 +7,17 @@ import (
 )
 
 type Storage interface {
-	SaveLongURL(string, string) error
+	SaveLongURL(string, string, string) error
 	GetLongURL(string) (*Item, error)
-	BatchInsert(batchList []Item) error
+	BatchInsert([]Item) error
+	GetUserItems(string) ([]Item, error)
 	Ping() error
 	CloseDB() error
 }
 
 type Item struct {
-	UUID     int    `json:"uuid"`
+	UUID     int    `json:"-"`
+	UserID   string `json:"-"`
 	ShortURL string `json:"short_url"`
 	LongURL  string `json:"original_url"`
 }

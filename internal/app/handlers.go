@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/ANiWarlock/yandex_go_url_sh.git/lib/auth"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/storage"
 	"github.com/go-chi/chi/v5"
 	"net/http"
@@ -60,7 +61,10 @@ func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 	hashedURL := shorten(longURL)
 	shortURL := a.cfg.BaseURL + "/" + hashedURL
 
-	if err = a.storage.SaveLongURL(hashedURL, longURL); err != nil {
+	tokenString, _ := r.Cookie("auth")
+	userID, _ := auth.GetUserID(tokenString.Value)
+
+	if err = a.storage.SaveLongURL(hashedURL, longURL, userID); err != nil {
 		if errors.Is(err, storage.ErrUniqueViolation) {
 
 			switch r.URL.Path {
@@ -85,6 +89,7 @@ func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 		http.Error(rw, "Server Error", http.StatusBadRequest)
+		return
 	}
 
 	switch r.URL.Path {
@@ -193,6 +198,42 @@ func (a *App) APIBatchHandler(rw http.ResponseWriter, r *http.Request) {
 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)
+	_, err = rw.Write(resp)
+	if err != nil {
+		return
+	}
+}
+
+func (a *App) APIUserUrlsHandler(rw http.ResponseWriter, r *http.Request) {
+	tokenString, _ := r.Cookie("auth")
+	userID, _ := auth.GetUserID(tokenString.Value)
+
+	items, err := a.storage.GetUserItems(userID)
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot get user items: %v", err)
+		return
+	}
+
+	if len(items) == 0 {
+		rw.WriteHeader(http.StatusNoContent)
+		a.sugar.Errorf("no user items: %v", err)
+		return
+	}
+
+	for i, item := range items {
+		items[i].ShortURL = a.cfg.BaseURL + "/" + item.ShortURL
+	}
+
+	resp, err := json.Marshal(items)
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot process body: %v", err)
+		return
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
 	_, err = rw.Write(resp)
 	if err != nil {
 		return

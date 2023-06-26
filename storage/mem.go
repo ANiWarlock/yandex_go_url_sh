@@ -19,7 +19,7 @@ func InitMemStorage(cfg config.AppConfig) *MemStorage {
 	return &memStore
 }
 
-func (ms *MemStorage) SaveLongURL(hashedURL, longURL string) error {
+func (ms *MemStorage) SaveLongURL(hashedURL, longURL, userID string) error {
 	if ms.store[hashedURL] != "" {
 		return nil
 	}
@@ -30,7 +30,7 @@ func (ms *MemStorage) SaveLongURL(hashedURL, longURL string) error {
 
 func (ms *MemStorage) BatchInsert(items []Item) error {
 	for _, item := range items {
-		err := ms.SaveLongURL(item.ShortURL, item.LongURL)
+		err := ms.SaveLongURL(item.ShortURL, item.LongURL, item.UserID)
 		if err != nil {
 			return fmt.Errorf("failed to batch save item: %w", err)
 		}
@@ -51,6 +51,11 @@ func (ms *MemStorage) GetLongURL(hashedURL string) (*Item, error) {
 
 	item.LongURL = longURL
 	return &item, nil
+}
+
+func (ms *MemStorage) GetUserItems(userID string) ([]Item, error) {
+	//реализовано для DB
+	return nil, nil
 }
 
 func (ms *MemStorage) Ping() error {

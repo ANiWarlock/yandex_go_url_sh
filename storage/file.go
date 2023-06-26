@@ -41,10 +41,11 @@ func InitFileStorage(cfg config.AppConfig) (*FileStorage, error) {
 	return &fileStore, nil
 }
 
-func (fs *FileStorage) SaveLongURL(hashedURL, longURL string) error {
+func (fs *FileStorage) SaveLongURL(hashedURL, longURL, userID string) error {
 	item := Item{
 		ShortURL: hashedURL,
 		LongURL:  longURL,
+		UserID:   userID,
 	}
 
 	exist := fs.memStore.store[hashedURL] != ""
@@ -74,7 +75,7 @@ func (fs *FileStorage) SaveLongURL(hashedURL, longURL string) error {
 
 func (fs *FileStorage) BatchInsert(items []Item) error {
 	for _, item := range items {
-		err := fs.SaveLongURL(item.ShortURL, item.LongURL)
+		err := fs.SaveLongURL(item.ShortURL, item.LongURL, item.UserID)
 		if err != nil {
 			return fmt.Errorf("failed to batch save item: %w", err)
 		}
@@ -94,6 +95,11 @@ func (fs *FileStorage) GetLongURL(hashedURL string) (*Item, error) {
 	}
 	item.LongURL = longURL
 	return &item, nil
+}
+
+func (fs *FileStorage) GetUserItems(userID string) ([]Item, error) {
+	//реализовано для DB
+	return nil, nil
 }
 
 func (fs *FileStorage) Ping() error {

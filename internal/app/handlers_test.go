@@ -2,8 +2,10 @@ package app
 
 import (
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
+	"github.com/ANiWarlock/yandex_go_url_sh.git/lib/auth"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/logger"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/storage"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -66,6 +68,7 @@ func Test_GetShortURLHandler(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			request := httptest.NewRequest(test.method, test.url, strings.NewReader(test.body))
 			rr := httptest.NewRecorder()
+			setCookie(request)
 			myApp.GetShortURLHandler(rr, request)
 			res := rr.Result()
 			assert.Equal(t, test.want.code, res.StatusCode)
@@ -83,4 +86,17 @@ func Test_GetShortURLHandler(t *testing.T) {
 			}
 		})
 	}
+}
+
+func setCookie(r *http.Request) {
+	userID := uuid.NewString()
+	cookieStringValue := auth.BuildCookieStringValue(userID)
+
+	newCookie := &http.Cookie{
+		Name:     "auth",
+		Value:    cookieStringValue,
+		HttpOnly: true,
+	}
+
+	r.AddCookie(newCookie)
 }

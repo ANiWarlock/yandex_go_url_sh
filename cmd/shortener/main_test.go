@@ -116,7 +116,7 @@ func Test_Router(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			if test.method == http.MethodGet {
-				store.SaveLongURL(shortURLHash, url)
+				store.SaveLongURL(shortURLHash, url, "")
 			}
 
 			resp, resBody := testRequest(t, ts, test.method, test.url, test.body)
