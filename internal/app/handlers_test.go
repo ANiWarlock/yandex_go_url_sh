@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/lib/auth"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/logger"
@@ -22,7 +23,8 @@ func Test_GetShortURLHandler(t *testing.T) {
 	require.NoError(t, err)
 	cfg, err := config.InitConfig()
 	require.NoError(t, err)
-	store, err := storage.InitStorage(*cfg)
+	ctx := context.Background()
+	store, err := storage.InitStorage(ctx, *cfg)
 	require.NoError(t, err)
 	myApp := NewApp(cfg, store, sugar)
 
@@ -81,7 +83,7 @@ func Test_GetShortURLHandler(t *testing.T) {
 
 			if test.body != "" {
 				resHashedURL := string(resBody[len(resBody)-8:])
-				_, err := store.GetLongURL(resHashedURL)
+				_, err := store.GetLongURL(request.Context(), resHashedURL)
 				assert.NoError(t, err)
 			}
 		})

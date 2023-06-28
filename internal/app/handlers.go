@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
@@ -64,7 +65,7 @@ func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 	tokenString, _ := r.Cookie("auth")
 	userID, _ := auth.GetUserID(tokenString.Value)
 
-	if err = a.storage.SaveLongURL(hashedURL, longURL, userID); err != nil {
+	if err = a.storage.SaveLongURL(r.Context(), hashedURL, longURL, userID); err != nil {
 		if errors.Is(err, storage.ErrUniqueViolation) {
 
 			switch r.URL.Path {
@@ -122,9 +123,13 @@ func (a *App) LongURLRedirectHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := a.storage.GetLongURL(shortURL)
+	item, err := a.storage.GetLongURL(r.Context(), shortURL)
 	if err != nil {
 		http.Error(rw, "Not Found", http.StatusNotFound)
+		return
+	}
+	if item.Deleted {
+		rw.WriteHeader(http.StatusGone)
 		return
 	}
 
@@ -182,7 +187,7 @@ func (a *App) APIBatchHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// сохраняем
-	err = a.storage.BatchInsert(items)
+	err = a.storage.BatchInsert(r.Context(), items)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
 		a.sugar.Errorf("Cannot batch save: %v", err)
@@ -208,7 +213,7 @@ func (a *App) APIUserUrlsHandler(rw http.ResponseWriter, r *http.Request) {
 	tokenString, _ := r.Cookie("auth")
 	userID, _ := auth.GetUserID(tokenString.Value)
 
-	items, err := a.storage.GetUserItems(userID)
+	items, err := a.storage.GetUserItems(r.Context(), userID)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
 		a.sugar.Errorf("Cannot get user items: %v", err)
@@ -240,8 +245,34 @@ func (a *App) APIUserUrlsHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *App) APIUserUrlsDeleteHandler(rw http.ResponseWriter, r *http.Request) {
+	tokenString, _ := r.Cookie("auth")
+	userID, _ := auth.GetUserID(tokenString.Value)
+
+	var shortURLs []string
+
+	err := json.NewDecoder(r.Body).Decode(&shortURLs)
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot process body: %v", err)
+		return
+	}
+
+	go func(urls []string, userID string) {
+		var items []storage.Item
+
+		for _, url := range urls {
+			items = append(items, storage.Item{ShortURL: url, UserID: userID})
+		}
+
+		a.storage.BatchDeleteURL(context.Background(), items)
+	}(shortURLs, userID)
+
+	rw.WriteHeader(http.StatusAccepted)
+}
+
 func (a *App) PingHandler(rw http.ResponseWriter, r *http.Request) {
-	if err := a.storage.Ping(); err != nil {
+	if err := a.storage.Ping(r.Context()); err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	} else {

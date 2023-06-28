@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/internal/app"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/logger"
@@ -20,7 +21,8 @@ func main() {
 	if err != nil {
 		sugar.Fatalf("Cannot init config: %v", err)
 	}
-	store, err := storage.InitStorage(*cfg)
+	ctx := context.Background()
+	store, err := storage.InitStorage(ctx, *cfg)
 	if err != nil {
 		sugar.Fatalf("Cannot init storage: %v", err)
 	}

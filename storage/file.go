@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,7 +42,7 @@ func InitFileStorage(cfg config.AppConfig) (*FileStorage, error) {
 	return &fileStore, nil
 }
 
-func (fs *FileStorage) SaveLongURL(hashedURL, longURL, userID string) error {
+func (fs *FileStorage) SaveLongURL(ctx context.Context, hashedURL, longURL, userID string) error {
 	item := Item{
 		ShortURL: hashedURL,
 		LongURL:  longURL,
@@ -73,9 +74,9 @@ func (fs *FileStorage) SaveLongURL(hashedURL, longURL, userID string) error {
 	return nil
 }
 
-func (fs *FileStorage) BatchInsert(items []Item) error {
+func (fs *FileStorage) BatchInsert(ctx context.Context, items []Item) error {
 	for _, item := range items {
-		err := fs.SaveLongURL(item.ShortURL, item.LongURL, item.UserID)
+		err := fs.SaveLongURL(ctx, item.ShortURL, item.LongURL, item.UserID)
 		if err != nil {
 			return fmt.Errorf("failed to batch save item: %w", err)
 		}
@@ -83,7 +84,7 @@ func (fs *FileStorage) BatchInsert(items []Item) error {
 	return nil
 }
 
-func (fs *FileStorage) GetLongURL(hashedURL string) (*Item, error) {
+func (fs *FileStorage) GetLongURL(ctx context.Context, hashedURL string) (*Item, error) {
 	item := Item{
 		ShortURL: hashedURL,
 	}
@@ -97,12 +98,16 @@ func (fs *FileStorage) GetLongURL(hashedURL string) (*Item, error) {
 	return &item, nil
 }
 
-func (fs *FileStorage) GetUserItems(userID string) ([]Item, error) {
+func (fs *FileStorage) GetUserItems(ctx context.Context, userID string) ([]Item, error) {
 	//реализовано для DB
 	return nil, nil
 }
 
-func (fs *FileStorage) Ping() error {
+func (fs *FileStorage) BatchDeleteURL(ctx context.Context, items []Item) {
+	//реализовано для DB
+}
+
+func (fs *FileStorage) Ping(ctx context.Context) error {
 	return nil
 }
 
