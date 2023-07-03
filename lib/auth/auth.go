@@ -3,12 +3,25 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	"github.com/golang-jwt/jwt/v4"
+	"log"
 )
 
 var ErrInvalidToken = errors.New("token is not valid")
 
-const secret = "secretKey"
+var secret string
+
+type ctxKey string
+
+const CtxKeyUserID ctxKey = "ctxUserID"
+
+func SetSecretKey(cfg *config.AppConfig) {
+	secret = cfg.SecretKey
+	if secret == "" {
+		secret = "mySecretKey"
+	}
+}
 
 func GetUserID(tokenString string) (string, error) {
 	claims := jwt.MapClaims{}
@@ -18,11 +31,12 @@ func GetUserID(tokenString string) (string, error) {
 		}
 		return []byte(secret), nil
 	})
-	if !token.Valid {
-		return "", ErrInvalidToken
-	}
 	if err != nil {
-		return "", fmt.Errorf("jwt parse failed: %w", err)
+		return "", fmt.Errorf("failed to parse token string: %w", err)
+	}
+	if !token.Valid {
+		log.Printf("Received invalid token: %s \n", tokenString)
+		return "", ErrInvalidToken
 	}
 
 	userID := claims["userId"].(string)
@@ -30,12 +44,15 @@ func GetUserID(tokenString string) (string, error) {
 	return userID, nil
 }
 
-func BuildCookieStringValue(userID string) string {
+func BuildCookieStringValue(userID string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.MapClaims{
 			"userId": userID,
 		})
-	tokenString, _ := token.SignedString([]byte(secret))
+	tokenString, err := token.SignedString([]byte(secret))
+	if err != nil {
+		return "", fmt.Errorf("failed signing string: %w", err)
+	}
 
-	return tokenString
+	return tokenString, nil
 }

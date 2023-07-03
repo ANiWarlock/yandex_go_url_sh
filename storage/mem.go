@@ -9,23 +9,25 @@ import (
 )
 
 type MemStorage struct {
-	store map[string]string
+	// [short] [long, user_id]
+	store map[string][]string
 }
 
 func InitMemStorage(cfg config.AppConfig) *MemStorage {
 	memStore := MemStorage{
-		store: make(map[string]string),
+		store: make(map[string][]string),
 	}
 
 	return &memStore
 }
 
 func (ms *MemStorage) SaveLongURL(ctx context.Context, hashedURL, longURL, userID string) error {
-	if ms.store[hashedURL] != "" {
+	if ms.store[hashedURL][0] != "" {
 		return nil
 	}
 
-	ms.store[hashedURL] = longURL
+	ms.store[hashedURL][0] = longURL
+	ms.store[hashedURL][1] = userID
 	return nil
 }
 
@@ -44,7 +46,7 @@ func (ms *MemStorage) GetLongURL(ctx context.Context, hashedURL string) (*Item, 
 		ShortURL: hashedURL,
 	}
 
-	longURL := ms.store[hashedURL]
+	longURL := ms.store[hashedURL][0]
 
 	if longURL == "" {
 		return &item, errors.New("longURL not found")
@@ -55,8 +57,19 @@ func (ms *MemStorage) GetLongURL(ctx context.Context, hashedURL string) (*Item, 
 }
 
 func (ms *MemStorage) GetUserItems(ctx context.Context, userID string) ([]Item, error) {
-	//реализовано для DB
-	return nil, nil
+	items := make([]Item, 0)
+	for k, v := range ms.store {
+		if v[1] == userID {
+			var i Item
+
+			i.ShortURL = k
+			i.LongURL = v[0]
+			i.UserID = v[1]
+
+			items = append(items, i)
+		}
+	}
+	return items, nil
 }
 
 func (ms *MemStorage) BatchDeleteURL(ctx context.Context, items []Item) {

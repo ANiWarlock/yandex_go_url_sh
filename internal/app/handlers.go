@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/lib/auth"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/storage"
 	"github.com/go-chi/chi/v5"
@@ -62,8 +63,7 @@ func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 	hashedURL := shorten(longURL)
 	shortURL := a.cfg.BaseURL + "/" + hashedURL
 
-	tokenString, _ := r.Cookie("auth")
-	userID, _ := auth.GetUserID(tokenString.Value)
+	userID := getUserID(r.Context())
 
 	if err = a.storage.SaveLongURL(r.Context(), hashedURL, longURL, userID); err != nil {
 		if errors.Is(err, storage.ErrUniqueViolation) {
@@ -210,8 +210,10 @@ func (a *App) APIBatchHandler(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) APIUserUrlsHandler(rw http.ResponseWriter, r *http.Request) {
-	tokenString, _ := r.Cookie("auth")
-	userID, _ := auth.GetUserID(tokenString.Value)
+	userID := getUserID(r.Context())
+
+	fmt.Println("userID: ")
+	fmt.Println(userID)
 
 	items, err := a.storage.GetUserItems(r.Context(), userID)
 	if err != nil {
@@ -220,9 +222,12 @@ func (a *App) APIUserUrlsHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println("len items: ")
+	fmt.Println(len(items))
+	fmt.Println(items)
+
 	if len(items) == 0 {
 		rw.WriteHeader(http.StatusNoContent)
-		a.sugar.Errorf("no user items: %v", err)
 		return
 	}
 
@@ -246,8 +251,7 @@ func (a *App) APIUserUrlsHandler(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) APIUserUrlsDeleteHandler(rw http.ResponseWriter, r *http.Request) {
-	tokenString, _ := r.Cookie("auth")
-	userID, _ := auth.GetUserID(tokenString.Value)
+	userID := getUserID(r.Context())
 
 	var shortURLs []string
 
@@ -283,4 +287,12 @@ func (a *App) PingHandler(rw http.ResponseWriter, r *http.Request) {
 func shorten(longURL string) string {
 	hashedString := sha1.Sum([]byte(longURL))
 	return hex.EncodeToString(hashedString[:4])
+}
+
+func getUserID(ctx context.Context) string {
+	if userID := ctx.Value(auth.CtxKeyUserID); userID != nil {
+		return userID.(string)
+	}
+
+	return ""
 }

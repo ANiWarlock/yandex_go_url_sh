@@ -70,7 +70,8 @@ func Test_GetShortURLHandler(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			request := httptest.NewRequest(test.method, test.url, strings.NewReader(test.body))
 			rr := httptest.NewRecorder()
-			setCookie(request)
+			err := setCookie(request)
+			require.NoError(t, err)
 			myApp.GetShortURLHandler(rr, request)
 			res := rr.Result()
 			assert.Equal(t, test.want.code, res.StatusCode)
@@ -90,9 +91,12 @@ func Test_GetShortURLHandler(t *testing.T) {
 	}
 }
 
-func setCookie(r *http.Request) {
+func setCookie(r *http.Request) error {
 	userID := uuid.NewString()
-	cookieStringValue := auth.BuildCookieStringValue(userID)
+	cookieStringValue, err := auth.BuildCookieStringValue(userID)
+	if err != nil {
+		return err
+	}
 
 	newCookie := &http.Cookie{
 		Name:     "auth",
@@ -100,5 +104,9 @@ func setCookie(r *http.Request) {
 		HttpOnly: true,
 	}
 
+	ctx := context.WithValue(r.Context(), auth.CtxKeyUserID, userID)
+	r = r.WithContext(ctx)
+
 	r.AddCookie(newCookie)
+	return nil
 }

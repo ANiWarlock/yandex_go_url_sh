@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/internal/app"
+	"github.com/ANiWarlock/yandex_go_url_sh.git/lib/auth"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/logger"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/router"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/storage"
@@ -21,6 +22,8 @@ func main() {
 	if err != nil {
 		sugar.Fatalf("Cannot init config: %v", err)
 	}
+	auth.SetSecretKey(cfg)
+
 	ctx := context.Background()
 	store, err := storage.InitStorage(ctx, *cfg)
 	if err != nil {

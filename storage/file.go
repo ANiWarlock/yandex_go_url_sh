@@ -49,12 +49,12 @@ func (fs *FileStorage) SaveLongURL(ctx context.Context, hashedURL, longURL, user
 		UserID:   userID,
 	}
 
-	exist := fs.memStore.store[hashedURL] != ""
+	exist := len(fs.memStore.store[hashedURL]) != 0
 	if exist {
 		return nil
 	}
 
-	fs.memStore.store[hashedURL] = longURL
+	fs.memStore.store[hashedURL] = []string{longURL, userID}
 
 	item.UUID = fs.lastUUID + 1
 	data, err := json.Marshal(item)
@@ -89,7 +89,7 @@ func (fs *FileStorage) GetLongURL(ctx context.Context, hashedURL string) (*Item,
 		ShortURL: hashedURL,
 	}
 
-	longURL := fs.memStore.store[hashedURL]
+	longURL := fs.memStore.store[hashedURL][0]
 
 	if longURL == "" {
 		return &item, errors.New("longURL not found")
@@ -99,8 +99,11 @@ func (fs *FileStorage) GetLongURL(ctx context.Context, hashedURL string) (*Item,
 }
 
 func (fs *FileStorage) GetUserItems(ctx context.Context, userID string) ([]Item, error) {
-	//реализовано для DB
-	return nil, nil
+	items, err := fs.memStore.GetUserItems(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load user items: %w", err)
+	}
+	return items, nil
 }
 
 func (fs *FileStorage) BatchDeleteURL(ctx context.Context, items []Item) {
@@ -121,7 +124,7 @@ func (fs *FileStorage) loadFromFile(file *os.File) error {
 			return fmt.Errorf("failed to unmarshal a line from the file storage document: %w", err)
 		}
 
-		fs.memStore.store[line.ShortURL] = line.LongURL
+		fs.memStore.store[line.ShortURL] = []string{line.LongURL, line.UserID}
 		fs.lastUUID = line.UUID
 	}
 

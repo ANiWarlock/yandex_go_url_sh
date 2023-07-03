@@ -14,12 +14,20 @@ type DBStorage struct {
 	pool *pgxpool.Pool
 }
 
+const MaxConns = 20
+
 var ErrUniqueViolation = errors.New("unique violation error")
 
 func InitDBStorage(ctx context.Context, cfg config.AppConfig) (*DBStorage, error) {
 	dbStore := DBStorage{}
 
-	pool, err := pgxpool.New(ctx, cfg.DatabaseDSN)
+	pgxConfig, err := pgxpool.ParseConfig(cfg.DatabaseDSN)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse DSN: %w", err)
+	}
+	pgxConfig.MaxConns = MaxConns
+
+	pool, err := pgxpool.NewWithConfig(ctx, pgxConfig)
 	if err != nil {
 		return &dbStore, fmt.Errorf("failed to open db connection: %w", err)
 	}
