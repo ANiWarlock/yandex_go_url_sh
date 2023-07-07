@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
@@ -8,29 +9,31 @@ import (
 )
 
 type MemStorage struct {
-	store map[string]string
+	// [short] [long, user_id]
+	store map[string][]string
 }
 
 func InitMemStorage(cfg config.AppConfig) *MemStorage {
 	memStore := MemStorage{
-		store: make(map[string]string),
+		store: make(map[string][]string),
 	}
 
 	return &memStore
 }
 
-func (ms *MemStorage) SaveLongURL(hashedURL, longURL string) error {
-	if ms.store[hashedURL] != "" {
+func (ms *MemStorage) SaveLongURL(ctx context.Context, hashedURL, longURL, userID string) error {
+	if ms.store[hashedURL][0] != "" {
 		return nil
 	}
 
-	ms.store[hashedURL] = longURL
+	ms.store[hashedURL][0] = longURL
+	ms.store[hashedURL][1] = userID
 	return nil
 }
 
-func (ms *MemStorage) BatchInsert(items []Item) error {
+func (ms *MemStorage) BatchInsert(ctx context.Context, items []Item) error {
 	for _, item := range items {
-		err := ms.SaveLongURL(item.ShortURL, item.LongURL)
+		err := ms.SaveLongURL(ctx, item.ShortURL, item.LongURL, item.UserID)
 		if err != nil {
 			return fmt.Errorf("failed to batch save item: %w", err)
 		}
@@ -38,12 +41,12 @@ func (ms *MemStorage) BatchInsert(items []Item) error {
 	return nil
 }
 
-func (ms *MemStorage) GetLongURL(hashedURL string) (*Item, error) {
+func (ms *MemStorage) GetLongURL(ctx context.Context, hashedURL string) (*Item, error) {
 	item := Item{
 		ShortURL: hashedURL,
 	}
 
-	longURL := ms.store[hashedURL]
+	longURL := ms.store[hashedURL][0]
 
 	if longURL == "" {
 		return &item, errors.New("longURL not found")
@@ -53,7 +56,32 @@ func (ms *MemStorage) GetLongURL(hashedURL string) (*Item, error) {
 	return &item, nil
 }
 
-func (ms *MemStorage) Ping() error {
+func (ms *MemStorage) GetUserItems(ctx context.Context, userID string) ([]Item, error) {
+	items := make([]Item, 0)
+	for k, v := range ms.store {
+		if v[1] == userID {
+			var i Item
+
+			i.ShortURL = k
+			i.LongURL = v[0]
+			i.UserID = v[1]
+
+			items = append(items, i)
+		}
+	}
+	return items, nil
+}
+
+func (ms *MemStorage) BatchDeleteURL(ctx context.Context, items []Item) {
+	for _, item := range items {
+		v, ok := ms.store[item.ShortURL]
+		if ok && v[1] == item.UserID {
+			delete(ms.store, item.ShortURL)
+		}
+	}
+}
+
+func (ms *MemStorage) Ping(ctx context.Context) error {
 	return nil
 }
 

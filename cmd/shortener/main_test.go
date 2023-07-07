@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/internal/app"
@@ -43,7 +44,8 @@ func Test_Router(t *testing.T) {
 	cfg, err := config.InitConfig()
 	require.NoError(t, err)
 
-	store, err := storage.InitStorage(*cfg)
+	ctx := context.Background()
+	store, err := storage.InitStorage(ctx, *cfg)
 	defer store.CloseDB()
 	require.NoError(t, err)
 
@@ -116,7 +118,7 @@ func Test_Router(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			if test.method == http.MethodGet {
-				store.SaveLongURL(shortURLHash, url)
+				store.SaveLongURL(ctx, shortURLHash, url, "")
 			}
 
 			resp, resBody := testRequest(t, ts, test.method, test.url, test.body)
@@ -127,7 +129,7 @@ func Test_Router(t *testing.T) {
 
 			if test.method == http.MethodPost && test.body != "" && resp.Header.Get("Content-Type") != "application/json" {
 				resHashedURL := resBody[len(resBody)-8:]
-				_, err := store.GetLongURL(resHashedURL)
+				_, err := store.GetLongURL(ctx, resHashedURL)
 				assert.NoError(t, err)
 			} else if test.method == http.MethodPost && resp.Header.Get("Content-Type") == "application/json" {
 				resHashedURL := resBody[len(resBody)-10 : len(resBody)-2]

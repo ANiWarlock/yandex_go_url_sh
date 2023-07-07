@@ -2,10 +2,13 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/ANiWarlock/yandex_go_url_sh.git/lib/auth"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/storage"
 	"github.com/go-chi/chi/v5"
 	"net/http"
@@ -60,7 +63,9 @@ func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 	hashedURL := shorten(longURL)
 	shortURL := a.cfg.BaseURL + "/" + hashedURL
 
-	if err = a.storage.SaveLongURL(hashedURL, longURL); err != nil {
+	userID := getUserID(r.Context())
+
+	if err = a.storage.SaveLongURL(r.Context(), hashedURL, longURL, userID); err != nil {
 		if errors.Is(err, storage.ErrUniqueViolation) {
 
 			switch r.URL.Path {
@@ -85,6 +90,7 @@ func (a *App) GetShortURLHandler(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 		http.Error(rw, "Server Error", http.StatusBadRequest)
+		return
 	}
 
 	switch r.URL.Path {
@@ -117,9 +123,13 @@ func (a *App) LongURLRedirectHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := a.storage.GetLongURL(shortURL)
+	item, err := a.storage.GetLongURL(r.Context(), shortURL)
 	if err != nil {
 		http.Error(rw, "Not Found", http.StatusNotFound)
+		return
+	}
+	if item.Deleted {
+		rw.WriteHeader(http.StatusGone)
 		return
 	}
 
@@ -177,7 +187,7 @@ func (a *App) APIBatchHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// сохраняем
-	err = a.storage.BatchInsert(items)
+	err = a.storage.BatchInsert(r.Context(), items)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
 		a.sugar.Errorf("Cannot batch save: %v", err)
@@ -199,8 +209,74 @@ func (a *App) APIBatchHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *App) APIUserUrlsHandler(rw http.ResponseWriter, r *http.Request) {
+	userID := getUserID(r.Context())
+
+	fmt.Println("userID: ")
+	fmt.Println(userID)
+
+	items, err := a.storage.GetUserItems(r.Context(), userID)
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot get user items: %v", err)
+		return
+	}
+
+	fmt.Println("len items: ")
+	fmt.Println(len(items))
+	fmt.Println(items)
+
+	if len(items) == 0 {
+		rw.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	for i, item := range items {
+		items[i].ShortURL = a.cfg.BaseURL + "/" + item.ShortURL
+	}
+
+	resp, err := json.Marshal(items)
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot process body: %v", err)
+		return
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
+	_, err = rw.Write(resp)
+	if err != nil {
+		return
+	}
+}
+
+func (a *App) APIUserUrlsDeleteHandler(rw http.ResponseWriter, r *http.Request) {
+	userID := getUserID(r.Context())
+
+	var shortURLs []string
+
+	err := json.NewDecoder(r.Body).Decode(&shortURLs)
+	if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		a.sugar.Errorf("Cannot process body: %v", err)
+		return
+	}
+
+	go func(urls []string, userID string) {
+		var items []storage.Item
+
+		for _, url := range urls {
+			items = append(items, storage.Item{ShortURL: url, UserID: userID})
+		}
+
+		a.storage.BatchDeleteURL(context.Background(), items)
+	}(shortURLs, userID)
+
+	rw.WriteHeader(http.StatusAccepted)
+}
+
 func (a *App) PingHandler(rw http.ResponseWriter, r *http.Request) {
-	if err := a.storage.Ping(); err != nil {
+	if err := a.storage.Ping(r.Context()); err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	} else {
@@ -211,4 +287,12 @@ func (a *App) PingHandler(rw http.ResponseWriter, r *http.Request) {
 func shorten(longURL string) string {
 	hashedString := sha1.Sum([]byte(longURL))
 	return hex.EncodeToString(hashedString[:4])
+}
+
+func getUserID(ctx context.Context) string {
+	if userID := ctx.Value(auth.CtxKeyUserID); userID != nil {
+		return userID.(string)
+	}
+
+	return ""
 }

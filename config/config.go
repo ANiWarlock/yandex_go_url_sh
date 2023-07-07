@@ -11,6 +11,7 @@ type AppConfig struct {
 	BaseURL     string `env:"BASE_URL"`
 	Filename    string `env:"FILE_STORAGE_PATH"`
 	DatabaseDSN string `env:"DATABASE_DSN"`
+	SecretKey   string `env:"SECRET_KEY"`
 }
 
 func InitConfig() (*AppConfig, error) {
@@ -28,6 +29,7 @@ func (c *AppConfig) parseFlags() {
 	flag.StringVar(&c.BaseURL, "b", "http://localhost:8080", "Укажите возвращаемый адрес в формате http://host:port")
 	flag.StringVar(&c.Filename, "f", "/tmp/short-url-db.json", "Полное имя файла, куда сохраняются данные в формате JSON")
 	flag.StringVar(&c.DatabaseDSN, "d", "", "Параметры подключения к БД")
+	flag.StringVar(&c.SecretKey, "s", "", "Ключ шифрования")
 	flag.Parse()
 }
 
