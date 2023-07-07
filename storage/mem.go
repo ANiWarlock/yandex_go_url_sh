@@ -73,7 +73,12 @@ func (ms *MemStorage) GetUserItems(ctx context.Context, userID string) ([]Item, 
 }
 
 func (ms *MemStorage) BatchDeleteURL(ctx context.Context, items []Item) {
-	//реализовано для DB
+	for _, item := range items {
+		v, ok := ms.store[item.ShortURL]
+		if ok && v[1] == item.UserID {
+			delete(ms.store, item.ShortURL)
+		}
+	}
 }
 
 func (ms *MemStorage) Ping(ctx context.Context) error {

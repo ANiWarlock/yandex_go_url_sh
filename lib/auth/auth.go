@@ -12,9 +12,9 @@ var ErrInvalidToken = errors.New("token is not valid")
 
 var secret string
 
-type ctxKey string
+type ctxKey uint
 
-const CtxKeyUserID ctxKey = "ctxUserID"
+const CtxKeyUserID ctxKey = iota
 
 func SetSecretKey(cfg *config.AppConfig) {
 	secret = cfg.SecretKey

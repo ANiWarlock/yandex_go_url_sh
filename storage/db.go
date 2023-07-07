@@ -14,7 +14,7 @@ type DBStorage struct {
 	pool *pgxpool.Pool
 }
 
-const MaxConns = 20
+const maxConns = 20
 
 var ErrUniqueViolation = errors.New("unique violation error")
 
@@ -25,7 +25,7 @@ func InitDBStorage(ctx context.Context, cfg config.AppConfig) (*DBStorage, error
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse DSN: %w", err)
 	}
-	pgxConfig.MaxConns = MaxConns
+	pgxConfig.MaxConns = maxConns
 
 	pool, err := pgxpool.NewWithConfig(ctx, pgxConfig)
 	if err != nil {

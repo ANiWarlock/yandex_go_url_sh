@@ -2,12 +2,14 @@ package storage
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/ANiWarlock/yandex_go_url_sh.git/config"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"log"
 	"os"
 )
 
@@ -107,7 +109,53 @@ func (fs *FileStorage) GetUserItems(ctx context.Context, userID string) ([]Item,
 }
 
 func (fs *FileStorage) BatchDeleteURL(ctx context.Context, items []Item) {
-	//реализовано для DB
+	var itemsForDeletion []string
+
+	for _, item := range items {
+		v, ok := fs.memStore.store[item.ShortURL]
+		if ok && v[1] == item.UserID {
+			delete(fs.memStore.store, item.ShortURL)
+			itemsForDeletion = append(itemsForDeletion, item.ShortURL)
+		}
+	}
+
+	var bs []byte
+	buf := bytes.NewBuffer(bs)
+	scanner := bufio.NewScanner(fs.file)
+
+	for scanner.Scan() {
+		forDeletion := false
+		var line Item
+		err := json.Unmarshal(scanner.Bytes(), &line)
+		if err != nil {
+			log.Printf("failed to unmarshal a line from the file storage document: %v", err)
+		}
+
+		for _, item := range itemsForDeletion {
+			if item == line.ShortURL {
+				forDeletion = true
+			}
+		}
+
+		if !forDeletion {
+			_, err := buf.Write(scanner.Bytes())
+			if err != nil {
+				log.Fatal(err)
+			}
+			_, err = buf.WriteString("\n")
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	err := os.WriteFile(fs.filename, buf.Bytes(), 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func (fs *FileStorage) Ping(ctx context.Context) error {

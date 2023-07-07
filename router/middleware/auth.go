@@ -14,7 +14,7 @@ func SetAuthCookie(next http.Handler) http.Handler {
 		if err != nil {
 			userID, err := setCookie(rw, r)
 			if err != nil {
-				http.Error(rw, "Unauthorized", http.StatusUnauthorized)
+				http.Error(rw, "500", http.StatusInternalServerError)
 				return
 			}
 			r = setCtxUserID(r, userID)
@@ -26,7 +26,7 @@ func SetAuthCookie(next http.Handler) http.Handler {
 		if err != nil {
 			userID, err := setCookie(rw, r)
 			if err != nil {
-				http.Error(rw, "Unauthorized", http.StatusUnauthorized)
+				http.Error(rw, "500", http.StatusInternalServerError)
 				return
 			}
 			r = setCtxUserID(r, userID)
